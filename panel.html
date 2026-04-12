@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Chat Tree</title>
+  <link rel="stylesheet" href="panel.css">
+  <style>
+    body { margin: 0; background: rgb(33,33,33); overflow: hidden; }
+    #cttv-panel {
+      position: fixed; inset: 0; width: 100%; height: 100%;
+      border-left: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="cttv-panel">
+    <div id="cttv-header">
+      <div id="cttv-header-text">
+        <h1>Chat Tree - View your whole AI chat at once.</h1>
+        <p>Click to navigate to that chat turn. Right click for annotation options. Shift-click to select multiple.</p>
+      </div>
+      <div id="cttv-header-buttons">
+        <button id="cttv-settings" title="Settings">⚙</button>
+        <button id="cttv-close">✕</button>
+      </div>
+    </div>
+    <div id="cttv-settings-dialog" class="hidden">
+      <div id="cttv-settings-title">Settings<button id="cttv-settings-close">✕</button></div>
+      <div class="cttv-settings-section">
+        <div class="cttv-settings-label">Appearance</div>
+        <div class="cttv-settings-row">
+          <label for="cttv-color-user">User turn color</label>
+          <input type="color" id="cttv-color-user" value="#99cc99">
+        </div>
+        <div class="cttv-settings-row">
+          <label for="cttv-color-assistant">Assistant turn color</label>
+          <input type="color" id="cttv-color-assistant" value="#9999cc">
+        </div>
+        <button id="cttv-colors-reset">Reset to defaults</button>
+        <div class="cttv-settings-row">
+          <label for="cttv-user-only">Show user turns only</label>
+          <input type="checkbox" id="cttv-user-only">
+        </div>
+      </div>
+      <div class="cttv-settings-section">
+        <div class="cttv-settings-label">Annotations</div>
+        <button id="cttv-export-btn">⬇ Export annotations...</button>
+        <div class="cttv-settings-hint">Saves all annotations across all conversations to a JSON file.</div>
+        <button id="cttv-import-btn">⬆ Import annotations...</button>
+        <div class="cttv-settings-hint">Merges annotations from a previously exported file.</div>
+      </div>
+      <div id="cttv-settings-status"></div>
+    </div>
+    <div id="cttv-body">
+      <div id="cttv-error"></div>
+      <div id="cttv-map"></div>
+      <div id="cttv-menu" class="hidden">
+        <button data-action="star">⭐ Star</button>
+        <div id="cttv-colors">
+          <span data-color="#e55" style="color:#e55">●</span>
+          <span data-color="#e93" style="color:#e93">●</span>
+          <span data-color="#9c9" style="color:#9c9">●</span>
+          <span data-color="#69f" style="color:#69f">●</span>
+          <span data-color="#c6f" style="color:#c6f">●</span>
+          <span data-color="">✕</span>
+        </div>
+        <button data-action="notes">📝 Notes...</button>
+        <button data-action="unimportant">👁 Mark unimportant</button>
+      </div>
+      <div id="cttv-notes-dialog" class="hidden">
+        <div id="cttv-notes-label">Notes for this turn:</div>
+        <textarea id="cttv-notes-ta" rows="5"></textarea>
+        <label id="cttv-notes-preview-label">
+          <input type="checkbox" id="cttv-notes-preview-toggle" checked>
+          Show chat text in hover preview
+        </label>
+        <div id="cttv-notes-buttons">
+          <button id="cttv-notes-cancel">Cancel</button>
+          <button id="cttv-notes-save">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="cttv-tooltip"></div>
+  <script src="panel-core.js"></script>
+  <script src="panel-standalone.js"></script>
+</body>
+</html>
