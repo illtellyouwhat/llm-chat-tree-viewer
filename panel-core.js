@@ -246,13 +246,6 @@ function initPanel(adapter) {
     cttvSelectionSet = new Set();
     cttvSelectionAnchor = null;
 
-    function positionTooltip(tt, e) {
-      const x = Math.min(e.clientX + 12, window.innerWidth - 300);
-      const y = Math.min(e.clientY + 16, window.innerHeight - 220);
-      tt.style.left = x + 'px';
-      tt.style.top = y + 'px';
-    }
-
     for (const n of nodes) {
       if (n.role === 'root') {
         const label = document.createElement('div');
@@ -265,16 +258,17 @@ function initPanel(adapter) {
       const outer = document.createElement('div');
       outer.className = `cttv-node-outer cttv-node-outer-${n.role}`;
       outer.dataset.id = n.id;
-      outer.style.cssText = `position:absolute;left:${nodeX(n)}px;top:${nodeY(n)}px;width:${NODE_W}px;height:${NODE_H}px;border-radius:12px;box-sizing:border-box;z-index:1;`;
+      outer.style.cssText = `position:absolute;left:${nodeX(n)}px;top:${nodeY(n)}px;width:${NODE_W}px;min-height:${NODE_H}px;max-height:${NODE_H}px;border-radius:12px;box-sizing:border-box;z-index:1;overflow:hidden;`;
 
       const inner = document.createElement('div');
       inner.className = `cttv-node cttv-node-${n.role}`;
 
       const ann = cttvAnnotations[n.id] || {};
+      let textDiv = null;
       if (ann.unimportant) {
         inner.style.cssText = 'width:40px;height:40px;border-radius:50%;box-sizing:border-box;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);';
       } else {
-        inner.style.cssText = 'width:100%;height:100%;border-radius:10px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:5px;';
+        inner.style.cssText = 'width:100%;min-height:100%;height:auto;border-radius:10px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:5px;';
         if (ann.color) inner.style.border = `3px solid ${ann.color}`;
         if (ann.star) {
           const starEl = document.createElement('div');
@@ -295,6 +289,10 @@ function initPanel(adapter) {
           }
           inner.appendChild(iconRow);
         }
+        textDiv = document.createElement('div');
+        textDiv.className = 'cttv-node-text';
+        textDiv.textContent = n.text || '(empty)';
+        inner.appendChild(textDiv);
       }
 
       outer.appendChild(inner);
@@ -317,28 +315,37 @@ function initPanel(adapter) {
           }
           return;
         }
+        if (textDiv) {
+          if (outer.classList.contains('cttv-pinned')) {
+            outer.classList.remove('cttv-pinned');
+            outer.style.maxHeight = NODE_H + 'px';
+            outer.style.zIndex = '1';
+            textDiv.style.display = 'none';
+            return;
+          }
+          if (outer.style.maxHeight !== NODE_H + 'px' && outer.style.maxHeight !== '') {
+            outer.classList.add('cttv-pinned');
+            return;
+          }
+        }
         clearMultiSelection();
         selectNode(n.id, false);
         adapter.onNodeClick(n.id);
       });
-      outer.addEventListener('mouseenter', (e) => {
-        const tt = document.getElementById('cttv-tooltip');
-        const ann = cttvAnnotations[n.id] || {};
-        const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
-        if (ann.notes) {
-          if (ann.notesPreview !== false) {
-            tt.innerHTML = `<div style="margin-bottom:4px">📝 ${esc(ann.notes)}</div><hr style="border:none;border-top:1px solid #555;margin:4px 0"><div>${esc(n.text || '(empty)')}</div>`;
-          } else {
-            tt.innerHTML = `<div>📝 ${esc(ann.notes)}</div>`;
-          }
-        } else {
-          tt.textContent = n.text || '(empty)';
-        }
-        tt.style.display = 'block';
-        positionTooltip(tt, e);
+      outer.addEventListener('mouseenter', () => {
+        if (!textDiv) return;
+        if (outer.classList.contains('cttv-pinned')) return;
+        outer.style.maxHeight = '260px';
+        outer.style.zIndex = '10';
+        textDiv.style.display = 'block';
       });
-      outer.addEventListener('mousemove', (e) => positionTooltip(document.getElementById('cttv-tooltip'), e));
-      outer.addEventListener('mouseleave', () => { document.getElementById('cttv-tooltip').style.display = 'none'; });
+      outer.addEventListener('mouseleave', () => {
+        if (!textDiv) return;
+        if (outer.classList.contains('cttv-pinned')) return;
+        outer.style.maxHeight = NODE_H + 'px';
+        outer.style.zIndex = '1';
+        textDiv.style.display = 'none';
+      });
       outer.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         if (cttvSelectionSet.size > 1 && cttvSelectionSet.has(n.id)) {
@@ -491,7 +498,17 @@ function initPanel(adapter) {
     }
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') { hideMenu(); clearMultiSelection(); }
+    if (e.key === 'Escape') {
+      hideMenu();
+      clearMultiSelection();
+      document.querySelectorAll('.cttv-node-outer.cttv-pinned').forEach(el => {
+        el.classList.remove('cttv-pinned');
+        el.style.maxHeight = NODE_H + 'px';
+        el.style.zIndex = '1';
+        const td = el.querySelector('.cttv-node-text');
+        if (td) td.style.display = 'none';
+      });
+    }
   });
 
   document.getElementById('cttv-menu').addEventListener('click', (e) => {

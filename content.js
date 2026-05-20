@@ -17,7 +17,6 @@
     // Otherwise fall through: panel is hidden, or we're on a different conversation.
     // Remove the old panel and rebuild fresh below.
     existing.remove();
-    document.getElementById('cttv-tooltip')?.remove();
   }
 
   // Build panel shell
@@ -128,10 +127,6 @@
     }
   });
 
-  const tooltip = document.createElement('div');
-  tooltip.id = 'cttv-tooltip';
-  tooltip.style.pointerEvents = 'none';
-  document.body.appendChild(tooltip);
 
   document.getElementById('cttv-close').addEventListener('click', () => {
     panel.classList.add('hidden');

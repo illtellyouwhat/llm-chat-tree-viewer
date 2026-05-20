@@ -372,25 +372,6 @@
 
 #cttv-notes-save:hover { background: #2178c8; }
 
-#cttv-tooltip {
-  position: fixed;
-  background: #333;
-  border: 1px solid #555;
-  border-radius: 8px;
-  padding: 10px 12px;
-  max-width: 280px;
-  max-height: 200px;
-  overflow-y: auto;
-  font-size: 11px;
-  line-height: 1.5;
-  color: #eee;
-  pointer-events: none;
-  z-index: 100000;
-  display: none;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
 .cttv-note-dot {
   position: absolute;
   top: 3px;
@@ -401,4 +382,30 @@
   background: #88ccff;
   pointer-events: none;
   z-index: 2;
+}
+
+.cttv-node-outer {
+  transition: max-height 0.18s ease;
+}
+
+.cttv-node-text {
+  display: none;
+  width: 100%;
+  max-height: 180px;
+  overflow-y: auto;
+  font-size: 10px;
+  line-height: 1.4;
+  color: inherit;
+  word-break: break-word;
+  white-space: pre-wrap;
+  padding: 4px 6px 4px;
+  box-sizing: border-box;
+  margin-top: 4px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  flex-shrink: 0;
+}
+
+.cttv-node-outer.cttv-pinned {
+  outline: 2px solid rgba(255,255,255,0.4);
+  outline-offset: 1px;
 }
