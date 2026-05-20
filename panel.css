@@ -409,3 +409,70 @@
   outline: 2px solid rgba(255,255,255,0.4);
   outline-offset: 1px;
 }
+
+#cttv-add-note {
+  background: none;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  font-size: 19px;
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+#cttv-add-note:hover { color: #fff; }
+
+.cttv-sticky-note {
+  position: absolute;
+  background: #2a2a2a;
+  border: 1px solid #666;
+  border-radius: 6px;
+  padding: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  min-width: 160px;
+  width: 180px;
+}
+
+.cttv-sticky-note-handle {
+  background: #3a3a3a;
+  border-bottom: 1px solid #555;
+  border-radius: 6px 6px 0 0;
+  height: 20px;
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 4px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.cttv-sticky-note-handle:active { cursor: grabbing; }
+
+.cttv-sticky-delete {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+.cttv-sticky-delete:hover { color: #f88; }
+
+.cttv-sticky-note-ta {
+  background: transparent;
+  border: none;
+  color: #eee;
+  font-family: monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 6px 8px;
+  resize: none;
+  min-height: 60px;
+  width: 100%;
+  box-sizing: border-box;
+  outline: none;
+}

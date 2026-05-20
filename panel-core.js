@@ -33,6 +33,7 @@ function initPanel(adapter) {
   let cttvTree = null;
   let cttvMapping = null;
   let cttvAnnotations = {};
+  let cttvCanvasNotes = [];
   let cttvMenuNodeId = null;
   let cttvSelectedId = null;
   let cttvSelectionSet = new Set();
@@ -89,6 +90,97 @@ function initPanel(adapter) {
       cttvAnnotations = result[`cttv-ann-${conversationId}`] || {};
       cb();
     });
+  }
+
+  function saveCanvasNotes() {
+    chrome.storage.local.set({
+      [`cttv-canvas-${conversationId}`]: { stickyNotes: cttvCanvasNotes }
+    });
+    adapter.onAnnotationsSaved();
+  }
+
+  function loadCanvasNotes(cb) {
+    chrome.storage.local.get([`cttv-canvas-${conversationId}`], result => {
+      const data = result[`cttv-canvas-${conversationId}`] || {};
+      cttvCanvasNotes = data.stickyNotes || [];
+      cb();
+    });
+  }
+
+  function renderCanvasNotes() {
+    document.querySelectorAll('.cttv-sticky-note').forEach(el => el.remove());
+    const body = document.getElementById('cttv-body');
+    for (const note of cttvCanvasNotes) {
+      body.appendChild(createStickyNoteEl(note));
+    }
+  }
+
+  function createStickyNoteEl(note) {
+    const el = document.createElement('div');
+    el.className = 'cttv-sticky-note';
+    el.dataset.noteId = note.id;
+    el.style.left = note.x + 'px';
+    el.style.top = note.y + 'px';
+    if (note.width) el.style.width = note.width + 'px';
+
+    const handle = document.createElement('div');
+    handle.className = 'cttv-sticky-note-handle';
+
+    const del = document.createElement('button');
+    del.className = 'cttv-sticky-delete';
+    del.textContent = '✕';
+    del.title = 'Delete note';
+    del.addEventListener('click', (e) => {
+      e.stopPropagation();
+      cttvCanvasNotes = cttvCanvasNotes.filter(n => n.id !== note.id);
+      el.remove();
+      saveCanvasNotes();
+    });
+    handle.appendChild(del);
+
+    const ta = document.createElement('textarea');
+    ta.className = 'cttv-sticky-note-ta';
+    ta.rows = 4;
+    ta.value = note.text || '';
+    ta.addEventListener('input', () => {
+      const n = cttvCanvasNotes.find(n => n.id === note.id);
+      if (n) {
+        n.text = ta.value;
+        saveCanvasNotes();
+      }
+    });
+
+    el.appendChild(handle);
+    el.appendChild(ta);
+
+    let dragging = false, dragOffX = 0, dragOffY = 0;
+    handle.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      dragging = true;
+      const body = document.getElementById('cttv-body');
+      const br = body.getBoundingClientRect();
+      dragOffX = e.clientX - br.left + body.scrollLeft - note.x;
+      dragOffY = e.clientY - br.top + body.scrollTop - note.y;
+      document.body.style.userSelect = 'none';
+    });
+    document.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      const body = document.getElementById('cttv-body');
+      const br = body.getBoundingClientRect();
+      note.x = e.clientX - br.left + body.scrollLeft - dragOffX;
+      note.y = e.clientY - br.top + body.scrollTop - dragOffY;
+      el.style.left = note.x + 'px';
+      el.style.top = note.y + 'px';
+    });
+    document.addEventListener('mouseup', () => {
+      if (dragging) {
+        dragging = false;
+        document.body.style.userSelect = '';
+        saveCanvasNotes();
+      }
+    });
+
+    return el;
   }
 
   function parseTree(data) {
@@ -595,6 +687,20 @@ function initPanel(adapter) {
     }
   });
 
+  document.getElementById('cttv-add-note').addEventListener('click', () => {
+    const body = document.getElementById('cttv-body');
+    const note = {
+      id: Date.now().toString(),
+      x: body.scrollLeft + 20,
+      y: body.scrollTop + 20,
+      text: '',
+      width: 180
+    };
+    cttvCanvasNotes.push(note);
+    body.appendChild(createStickyNoteEl(note));
+    saveCanvasNotes();
+  });
+
   document.getElementById('cttv-settings').addEventListener('click', () => {
     document.getElementById('cttv-settings-dialog').classList.toggle('hidden');
     const s = document.getElementById('cttv-settings-status');
@@ -713,6 +819,8 @@ function initPanel(adapter) {
     applyPrefs,
     setConversationId(id) { conversationId = id; },
     selectNode,
+    loadCanvasNotes,
+    renderCanvasNotes,
   });
 
   return {
@@ -726,5 +834,7 @@ function initPanel(adapter) {
     getTree: () => cttvTree,
     getSelectedId: () => cttvSelectedId,
     refreshAllNodes,
+    loadCanvasNotes,
+    renderCanvasNotes,
   };
 }
