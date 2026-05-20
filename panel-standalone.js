@@ -30,7 +30,7 @@ const { loadConversationData, applyPrefs } = initPanel({
     });
   },
 
-  boot({ loadConversationData, loadAnnotations, applyPrefs, setConversationId, loadCanvasNotes, renderCanvasNotes }) {
+  boot({ loadConversationData, loadAnnotations, applyPrefs, setConversationId, loadCanvasNotes, renderCanvasNotes, loadColorKey, renderColorKey }) {
     chrome.storage.local.get(['cttv-handoff', 'cttv-prefs'], (result) => {
       applyPrefs(result['cttv-prefs'] || {});
       const handoff = result['cttv-handoff'];
@@ -42,8 +42,11 @@ const { loadConversationData, applyPrefs } = initPanel({
       setConversationId(handoff.conversationId);
       loadAnnotations(() => {
         loadCanvasNotes(() => {
-          renderCanvasNotes();
-          loadConversationData(handoff.data, handoff.selectedId || null);
+          loadColorKey(() => {
+            renderColorKey();
+            renderCanvasNotes();
+            loadConversationData(handoff.data, handoff.selectedId || null);
+          });
         });
       });
     });

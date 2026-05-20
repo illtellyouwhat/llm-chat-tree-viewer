@@ -31,6 +31,7 @@
       </div>
       <div id="cttv-header-buttons">
         <button id="cttv-add-note" title="Add sticky note">📝</button>
+        <button id="cttv-toggle-colorkey" title="Show/hide color key">🎨</button>
         <button id="cttv-settings" title="Settings">⚙</button>
         <button id="cttv-detach" title="Open in separate window">⇱</button>
         <button id="cttv-close">✕</button>
@@ -157,7 +158,7 @@
     });
   });
 
-  const { selectNode, loadConversationData, loadAnnotations, applyPrefs, setConversationId, getMapping, getNodes, getTree, getSelectedId, refreshAllNodes, loadCanvasNotes, renderCanvasNotes } = initPanel({
+  const { selectNode, loadConversationData, loadAnnotations, applyPrefs, setConversationId, getMapping, getNodes, getTree, getSelectedId, refreshAllNodes, loadCanvasNotes, renderCanvasNotes, loadColorKey, renderColorKey } = initPanel({
     onNodeClick(nodeId) {
       navigateToNode(nodeId);
     },
@@ -170,15 +171,18 @@
       try { chrome.runtime.sendMessage({ type: 'prefsUpdated', prefs }).catch(() => {}); } catch (_) {}
     },
 
-    boot({ loadConversationData, loadAnnotations, applyPrefs, setConversationId, loadCanvasNotes, renderCanvasNotes }) {
+    boot({ loadConversationData, loadAnnotations, applyPrefs, setConversationId, loadCanvasNotes, renderCanvasNotes, loadColorKey, renderColorKey }) {
       // Prefs must be loaded before the first render — merge into one storage read.
       chrome.storage.local.get(['cttv-prefs'], result => {
         applyPrefs(result['cttv-prefs'] || {});
         setConversationId(conversationId);
         if (conversationId) loadAnnotations(() => {
           loadCanvasNotes(() => {
-            renderCanvasNotes();
-            loadConversation(conversationId);
+            loadColorKey(() => {
+              renderColorKey();
+              renderCanvasNotes();
+              loadConversation(conversationId);
+            });
           });
         });
       });
@@ -487,8 +491,11 @@
         }
         loadAnnotations(() => {
           loadCanvasNotes(() => {
-            renderCanvasNotes();
-            loadConversation(newId);
+            loadColorKey(() => {
+              renderColorKey();
+              renderCanvasNotes();
+              loadConversation(newId);
+            });
           });
         });
       });

@@ -34,6 +34,7 @@ function initPanel(adapter) {
   let cttvMapping = null;
   let cttvAnnotations = {};
   let cttvCanvasNotes = [];
+  let cttvColorKey = {};
   let cttvMenuNodeId = null;
   let cttvSelectedId = null;
   let cttvSelectionSet = new Set();
@@ -181,6 +182,91 @@ function initPanel(adapter) {
     });
 
     return el;
+  }
+
+  function saveColorKey() {
+    chrome.storage.local.set({ 'cttv-colorkey': cttvColorKey });
+  }
+
+  function loadColorKey(cb) {
+    chrome.storage.local.get(['cttv-colorkey'], result => {
+      cttvColorKey = result['cttv-colorkey'] || {};
+      cb();
+    });
+  }
+
+  const CTTV_COLORS = ['#e55', '#e93', '#9c9', '#69f', '#c6f'];
+
+  function renderColorKey() {
+    const existing = document.querySelector('.cttv-colorkey');
+    if (!cttvColorKey._visible) {
+      existing?.remove();
+      document.getElementById('cttv-toggle-colorkey')?.classList.remove('active');
+      return;
+    }
+    if (existing) return;
+
+    const body = document.getElementById('cttv-body');
+    const el = document.createElement('div');
+    el.className = 'cttv-colorkey';
+    el.style.left = (cttvColorKey._x ?? 20) + 'px';
+    el.style.top = (cttvColorKey._y ?? 20) + 'px';
+
+    const handle = document.createElement('div');
+    handle.className = 'cttv-colorkey-handle';
+    handle.textContent = 'COLOR KEY';
+    el.appendChild(handle);
+
+    for (const color of CTTV_COLORS) {
+      const row = document.createElement('div');
+      row.className = 'cttv-colorkey-row';
+
+      const swatch = document.createElement('div');
+      swatch.className = 'cttv-colorkey-swatch';
+      swatch.style.background = color;
+
+      const input = document.createElement('input');
+      input.className = 'cttv-colorkey-input';
+      input.type = 'text';
+      input.value = cttvColorKey[color] || '';
+      input.placeholder = 'Add label...';
+      input.addEventListener('input', () => {
+        cttvColorKey[color] = input.value;
+        saveColorKey();
+      });
+
+      row.appendChild(swatch);
+      row.appendChild(input);
+      el.appendChild(row);
+    }
+
+    let dragging = false, dragOffX = 0, dragOffY = 0;
+    handle.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      dragging = true;
+      const br = body.getBoundingClientRect();
+      dragOffX = e.clientX - br.left + body.scrollLeft - (cttvColorKey._x ?? 20);
+      dragOffY = e.clientY - br.top + body.scrollTop - (cttvColorKey._y ?? 20);
+      document.body.style.userSelect = 'none';
+    });
+    document.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      const br = body.getBoundingClientRect();
+      cttvColorKey._x = e.clientX - br.left + body.scrollLeft - dragOffX;
+      cttvColorKey._y = e.clientY - br.top + body.scrollTop - dragOffY;
+      el.style.left = cttvColorKey._x + 'px';
+      el.style.top = cttvColorKey._y + 'px';
+    });
+    document.addEventListener('mouseup', () => {
+      if (dragging) {
+        dragging = false;
+        document.body.style.userSelect = '';
+        saveColorKey();
+      }
+    });
+
+    body.appendChild(el);
+    document.getElementById('cttv-toggle-colorkey')?.classList.add('active');
   }
 
   function parseTree(data) {
@@ -701,6 +787,12 @@ function initPanel(adapter) {
     saveCanvasNotes();
   });
 
+  document.getElementById('cttv-toggle-colorkey').addEventListener('click', () => {
+    cttvColorKey._visible = !cttvColorKey._visible;
+    saveColorKey();
+    renderColorKey();
+  });
+
   document.getElementById('cttv-settings').addEventListener('click', () => {
     document.getElementById('cttv-settings-dialog').classList.toggle('hidden');
     const s = document.getElementById('cttv-settings-status');
@@ -821,6 +913,8 @@ function initPanel(adapter) {
     selectNode,
     loadCanvasNotes,
     renderCanvasNotes,
+    loadColorKey,
+    renderColorKey,
   });
 
   return {
@@ -836,5 +930,7 @@ function initPanel(adapter) {
     refreshAllNodes,
     loadCanvasNotes,
     renderCanvasNotes,
+    loadColorKey,
+    renderColorKey,
   };
 }
