@@ -920,6 +920,104 @@ function initPanel(adapter) {
     }
   });
 
+  document.getElementById('cttv-export-md-btn').addEventListener('click', () => {
+    if (!cttvTree) {
+      const s = document.getElementById('cttv-settings-status');
+      s.textContent = 'No conversation loaded.';
+      s.dataset.error = '';
+      return;
+    }
+
+    chrome.storage.local.get(['cttv-colorkey'], result => {
+      const colorKey = result['cttv-colorkey'] || {};
+
+      const COLOR_NAMES = {
+        '#e55': 'Red',
+        '#e93': 'Orange',
+        '#9c9': 'Green',
+        '#69f': 'Blue',
+        '#c6f': 'Purple',
+      };
+
+      function colorLabel(hex) {
+        return colorKey[hex] || COLOR_NAMES[hex] || hex;
+      }
+
+      function truncate(text, max) {
+        if (!text || text.length <= max) return text || '';
+        const cut = text.lastIndexOf(' ', max);
+        return text.slice(0, cut > 0 ? cut : max) + '...';
+      }
+
+      const annotated = [];
+      function walk(node) {
+        if (node.role !== 'root') {
+          const ann = cttvAnnotations[node.id] || {};
+          if (ann.star || ann.color || ann.notes) {
+            annotated.push({ node, ann });
+          }
+        }
+        for (const child of (node.children || [])) walk(child);
+      }
+      walk(cttvTree);
+
+      if (annotated.length === 0) {
+        const s = document.getElementById('cttv-settings-status');
+        s.textContent = 'Nothing to export — annotate some turns first.';
+        s.dataset.error = '';
+        return;
+      }
+
+      const convUrl = conversationId
+        ? `https://chatgpt.com/c/${conversationId}`
+        : '(unknown)';
+      const dateStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
+
+      const lines = [
+        '# Chat Tree Export',
+        `**Conversation:** ${convUrl}`,
+        `**Exported:** ${dateStr}`,
+        '',
+        '---',
+        '',
+      ];
+
+      for (const { node, ann } of annotated) {
+        const roleLabel = node.role === 'user' ? 'User' : 'Assistant';
+        const starPrefix = ann.star ? '★ ' : '';
+        lines.push(`## ${starPrefix}Turn — ${roleLabel}`);
+        if (ann.notes) lines.push(`**Notes:** ${ann.notes}`);
+        if (ann.color) lines.push(`**Color:** ${colorLabel(ann.color)}`);
+        lines.push('');
+        lines.push(`> ${truncate(node.text, 300).replace(/\n/g, '\n> ')}`);
+        lines.push('');
+        lines.push('---');
+        lines.push('');
+      }
+
+      const markdown = lines.join('\n');
+      const blob = new Blob([markdown], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cttv-export-${conversationId || 'unknown'}.md`;
+      a.style.cssText = 'position:fixed;top:-9999px;left:-9999px;';
+      document.body.appendChild(a);
+      a.dispatchEvent(new MouseEvent('click', { bubbles: false }));
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      document.getElementById('cttv-settings-status').textContent =
+        `Exported ${annotated.length} annotated turn(s).`;
+    });
+  });
+
+  document.getElementById('cttv-export-canvas-btn').addEventListener('click', () => {
+    const s = document.getElementById('cttv-settings-status');
+    s.textContent = 'Canvas export coming soon.';
+    delete s.dataset.error;
+  });
+
   // Boot — adapter initialises prefs, conversation data, etc.
   adapter.boot({
     loadConversationData,
