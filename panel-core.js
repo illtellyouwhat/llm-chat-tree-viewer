@@ -509,36 +509,23 @@ function initPanel(adapter) {
           }
           return;
         }
-        if (textDiv) {
-          if (outer.classList.contains('cttv-pinned')) {
-            outer.classList.remove('cttv-pinned');
-            outer.style.maxHeight = NODE_H + 'px';
-            outer.style.zIndex = '1';
-            textDiv.style.display = 'none';
-            return;
-          }
-          if (outer.style.maxHeight !== NODE_H + 'px' && outer.style.maxHeight !== '') {
-            outer.classList.add('cttv-pinned');
-            return;
-          }
-        }
         clearMultiSelection();
         selectNode(n.id, false);
         adapter.onNodeClick(n.id);
       });
       outer.addEventListener('mouseenter', () => {
         if (!textDiv) return;
-        if (outer.classList.contains('cttv-pinned')) return;
         outer.style.maxHeight = '260px';
+        outer.style.width = '220px';
         outer.style.zIndex = '10';
-        textDiv.style.display = 'block';
+        textDiv.classList.add('cttv-node-text-expanded');
       });
       outer.addEventListener('mouseleave', () => {
         if (!textDiv) return;
-        if (outer.classList.contains('cttv-pinned')) return;
         outer.style.maxHeight = NODE_H + 'px';
+        outer.style.width = NODE_W + 'px';
         outer.style.zIndex = '1';
-        textDiv.style.display = 'none';
+        textDiv.classList.remove('cttv-node-text-expanded');
       });
       outer.addEventListener('contextmenu', (e) => {
         e.preventDefault();
@@ -583,7 +570,7 @@ function initPanel(adapter) {
       inner.style.cssText = 'width:40px;height:40px;border-radius:50%;box-sizing:border-box;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);';
       if (icons) icons.style.display = 'none';
     } else {
-      inner.style.cssText = 'width:100%;height:100%;border-radius:10px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:5px;';
+      inner.style.cssText = 'width:100%;min-height:100%;height:auto;border-radius:10px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:5px;';
       if (icons) icons.style.display = 'flex';
       if (ann.color) inner.style.border = `3px solid ${ann.color}`;
       if (ann.star) {
@@ -695,13 +682,6 @@ function initPanel(adapter) {
     if (e.key === 'Escape') {
       hideMenu();
       clearMultiSelection();
-      document.querySelectorAll('.cttv-node-outer.cttv-pinned').forEach(el => {
-        el.classList.remove('cttv-pinned');
-        el.style.maxHeight = NODE_H + 'px';
-        el.style.zIndex = '1';
-        const td = el.querySelector('.cttv-node-text');
-        if (td) td.style.display = 'none';
-      });
     }
   });
 
