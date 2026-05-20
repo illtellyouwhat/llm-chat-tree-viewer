@@ -1014,7 +1014,80 @@ function initPanel(adapter) {
 
   document.getElementById('cttv-export-canvas-btn').addEventListener('click', () => {
     const s = document.getElementById('cttv-settings-status');
-    s.textContent = 'Canvas export coming soon.';
+    if (!cttvTree) {
+      s.textContent = 'No conversation loaded.';
+      s.dataset.error = '';
+      return;
+    }
+
+    const OBSIDIAN_COLOR = {
+      '#e55': '1',
+      '#e93': '2',
+      '#9c9': '4',
+      '#69f': '5',
+      '#c6f': '6',
+    };
+
+    function obsidianColor(nodeId, ann) {
+      if (ann?.color && OBSIDIAN_COLOR[ann.color]) return OBSIDIAN_COLOR[ann.color];
+      if (ann?.star) return '3';
+      return '';
+    }
+
+    function truncate(text, max) {
+      if (!text || text.length <= max) return text || '';
+      const cut = text.lastIndexOf(' ', max);
+      return text.slice(0, cut > 0 ? cut : max) + '...';
+    }
+
+    const treeCopy = JSON.parse(JSON.stringify(cttvTree));
+    layoutTree(treeCopy);
+    const allNodes = flattenTree(treeCopy);
+
+    const canvasNodes = [];
+    const canvasEdges = [];
+
+    for (const n of allNodes) {
+      const ann = cttvAnnotations[n.id] || {};
+      let nodeText = n.role === 'root' ? 'START' : truncate(n.text, 300);
+      if (ann.notes) nodeText += `\n\n---\n📝 ${ann.notes}`;
+
+      canvasNodes.push({
+        id: n.id,
+        type: 'text',
+        text: nodeText,
+        x: Math.round(n.col * NODE_STRIDE_X * 3),
+        y: Math.round(n.depth * NODE_STRIDE_Y * 2.5),
+        width: 250,
+        height: 100,
+        color: obsidianColor(n.id, ann),
+      });
+
+      for (const child of (n.children || [])) {
+        canvasEdges.push({
+          id: `edge-${n.id}-${child.id}`,
+          fromNode: n.id,
+          fromSide: 'bottom',
+          toNode: child.id,
+          toSide: 'top',
+          color: '',
+        });
+      }
+    }
+
+    const canvasJson = JSON.stringify({ nodes: canvasNodes, edges: canvasEdges }, null, 2);
+    const blob = new Blob([canvasJson], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cttv-canvas-${conversationId || 'unknown'}.canvas`;
+    a.style.cssText = 'position:fixed;top:-9999px;left:-9999px;';
+    document.body.appendChild(a);
+    a.dispatchEvent(new MouseEvent('click', { bubbles: false }));
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    s.textContent = `Exported ${canvasNodes.length} node(s) as Obsidian Canvas.`;
     delete s.dataset.error;
   });
 
