@@ -158,7 +158,7 @@
     });
   });
 
-  const { selectNode, loadConversationData, loadAnnotations, applyPrefs, setConversationId, getMapping, getNodes, getTree, getSelectedId, refreshAllNodes, loadCanvasNotes, renderCanvasNotes, loadColorKey, renderColorKey } = initPanel({
+  const { selectNode, loadConversationData, loadAnnotations, applyPrefs, setConversationId, getMapping, getNodes, getTree, getSelectedId, refreshAllNodes, loadCanvasNotes, renderCanvasNotes, loadColorKey, renderColorKey, createNoteFromDrag } = initPanel({
     onNodeClick(nodeId) {
       navigateToNode(nodeId);
     },
@@ -513,5 +513,18 @@
     });
     statusObserver.observe(statusEl, { childList: true, subtree: true, characterData: true });
   }
+
+  document.addEventListener('dragstart', (e) => {
+    if (e.target.closest('#cttv-panel')) return;
+    const text = window.getSelection()?.toString()?.trim();
+    if (!text) return;
+    if (typeof createNoteFromDrag === 'function') {
+      createNoteFromDrag(text);
+      return;
+    }
+    try {
+      chrome.runtime.sendMessage({ type: 'dragToNote', text }).catch(() => {});
+    } catch (_) {}
+  });
 
 })();

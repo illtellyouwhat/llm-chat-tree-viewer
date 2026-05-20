@@ -184,6 +184,22 @@ function initPanel(adapter) {
     return el;
   }
 
+  function createNoteFromDrag(text) {
+    if (!conversationId) return;
+    const body = document.getElementById('cttv-body');
+    if (!body) return;
+    const note = {
+      id: Date.now().toString(),
+      x: body.scrollLeft + 40,
+      y: body.scrollTop + 40,
+      text: text,
+      width: 200
+    };
+    cttvCanvasNotes.push(note);
+    body.appendChild(createStickyNoteEl(note));
+    saveCanvasNotes();
+  }
+
   function saveColorKey() {
     chrome.storage.local.set({ 'cttv-colorkey': cttvColorKey });
   }
@@ -932,5 +948,6 @@ function initPanel(adapter) {
     renderCanvasNotes,
     loadColorKey,
     renderColorKey,
+    createNoteFromDrag,
   };
 }

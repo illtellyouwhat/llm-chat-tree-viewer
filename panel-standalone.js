@@ -11,7 +11,7 @@ document.getElementById('cttv-close').addEventListener('click', () => {
   chrome.runtime.sendMessage({ type: 'popoutClosing' });
 });
 
-const { loadConversationData, applyPrefs } = initPanel({
+const { loadConversationData, applyPrefs, createNoteFromDrag } = initPanel({
   onNodeClick(nodeId) {
     chrome.tabs.query({ url: 'https://chatgpt.com/*' }, (tabs) => {
       if (tabs[0]) chrome.tabs.sendMessage(tabs[0].id, { type: 'navigateTo', nodeId });
@@ -60,5 +60,7 @@ chrome.runtime.onMessage.addListener((msg) => {
     applyPrefs(msg.prefs);
   } else if (msg.type === 'closePanel') {
     chrome.runtime.sendMessage({ type: 'closePopout' });
+  } else if (msg.type === 'dragToNote') {
+    if (msg.text) createNoteFromDrag(msg.text);
   }
 });
