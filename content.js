@@ -528,7 +528,7 @@
   });
 
   document.addEventListener('dragstart', (e) => {
-    if (e.target.closest('#cttv-panel')) return;
+    if (e.target?.closest?.('#cttv-panel')) return;
     const text = window.getSelection()?.toString()?.trim() || lastDragSelection;
     lastDragSelection = '';
     if (!text) return;

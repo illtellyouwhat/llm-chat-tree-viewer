@@ -16,10 +16,12 @@
 // Returns: { selectNode, loadConversationData, loadAnnotations, getMapping, getNodes, getTree, getSelectedId, refreshAllNodes }
 
 function initPanel(adapter) {
-  const NODE_W = 80;
+  const NODE_W = 220;
   const NODE_H = 60;
   const NODE_GAP = 20;
-  const NODE_STRIDE_X = NODE_W + NODE_GAP;
+  const SATELLITE_W = NODE_W;
+  const SATELLITE_GAP = 20;
+  const NODE_STRIDE_X = NODE_W + SATELLITE_GAP + SATELLITE_W + NODE_GAP;
   const NODE_STRIDE_Y = NODE_H + NODE_GAP;
 
   const ICON_SVGS = {
@@ -397,6 +399,46 @@ function initPanel(adapter) {
     return { ...node, children: collapsedChildren };
   }
 
+  function createSatelliteEl(nodeId, nx, ny, noteText) {
+    const sat = document.createElement('div');
+    sat.className = 'cttv-satellite-note';
+    sat.dataset.satelliteFor = nodeId;
+    sat.style.cssText = `position:absolute;left:${nx + NODE_W + SATELLITE_GAP}px;top:${ny}px;width:${SATELLITE_W}px;min-height:${NODE_H}px;max-height:${NODE_H}px;z-index:1;`;
+
+    const textDiv = document.createElement('div');
+    textDiv.className = 'cttv-satellite-text';
+    textDiv.textContent = noteText;
+    sat.appendChild(textDiv);
+
+    sat.addEventListener('mouseenter', () => {
+      sat.style.maxHeight = '260px';
+      sat.style.zIndex = '10';
+      textDiv.classList.add('cttv-satellite-text-expanded');
+    });
+    sat.addEventListener('mouseleave', () => {
+      sat.style.maxHeight = NODE_H + 'px';
+      sat.style.zIndex = '1';
+      textDiv.classList.remove('cttv-satellite-text-expanded');
+    });
+    sat.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openNotesDialog(nodeId);
+    });
+
+    return sat;
+  }
+
+  function openNotesDialog(nodeId) {
+    const dialog = document.getElementById('cttv-notes-dialog');
+    dialog.dataset.nodeId = nodeId;
+    document.getElementById('cttv-notes-ta').value = cttvAnnotations[nodeId]?.notes || '';
+    document.getElementById('cttv-notes-preview-toggle').checked = cttvAnnotations[nodeId]?.notesPreview !== false;
+    const hasNotes = (cttvAnnotations[nodeId]?.notes || '').trim().length > 0;
+    document.getElementById('cttv-notes-preview-label').style.display = hasNotes ? '' : 'none';
+    dialog.classList.remove('hidden');
+    document.getElementById('cttv-notes-ta').focus();
+  }
+
   function renderMap(tree) {
     const displayTree = cttvPrefs.userOnly ? collapseAssistants(tree) : tree;
     layoutTree(displayTree);
@@ -428,6 +470,15 @@ function initPanel(adapter) {
         }
         edgePaths.push(`<path d="${d}" stroke="#888" stroke-width="1.5" fill="none"/>`);
       }
+    }
+
+    for (const n of nodes) {
+      if (n.role === 'root') continue;
+      const ann = cttvAnnotations[n.id] || {};
+      if (!ann.notes) continue;
+      const x1 = nodeX(n) + NODE_W;
+      const y1 = nodeY(n) + NODE_H / 2;
+      edgePaths.push(`<path data-satellite-edge-for="${n.id}" d="M${x1},${y1} L${x1 + SATELLITE_GAP},${y1}" stroke="#88ccff" stroke-width="1.5" fill="none"/>`);
     }
 
     const map = document.getElementById('cttv-map');
@@ -499,12 +550,10 @@ function initPanel(adapter) {
       }
 
       outer.appendChild(inner);
-      if (ann.notes) {
-        const dot = document.createElement('div');
-        dot.className = 'cttv-note-dot';
-        outer.appendChild(dot);
-      }
       map.appendChild(outer);
+      if (ann.notes) {
+        map.appendChild(createSatelliteEl(n.id, nodeX(n), nodeY(n), ann.notes));
+      }
 
       outer.addEventListener('click', (e) => {
         if (e.shiftKey) {
@@ -525,14 +574,12 @@ function initPanel(adapter) {
       outer.addEventListener('mouseenter', () => {
         if (!textDiv) return;
         outer.style.maxHeight = '260px';
-        outer.style.width = '220px';
         outer.style.zIndex = '10';
         textDiv.classList.add('cttv-node-text-expanded');
       });
       outer.addEventListener('mouseleave', () => {
         if (!textDiv) return;
         outer.style.maxHeight = NODE_H + 'px';
-        outer.style.width = NODE_W + 'px';
         outer.style.zIndex = '1';
         textDiv.classList.remove('cttv-node-text-expanded');
       });
@@ -589,15 +636,32 @@ function initPanel(adapter) {
         inner.insertBefore(starEl, inner.firstChild);
       }
     }
-    const existingDot = outer.querySelector('.cttv-note-dot');
+    const map = document.getElementById('cttv-map');
+    const svgEl = map?.querySelector('svg');
+    const existingSat = map?.querySelector(`.cttv-satellite-note[data-satellite-for="${nodeId}"]`);
+    const existingEdge = svgEl?.querySelector(`[data-satellite-edge-for="${nodeId}"]`);
+
     if (ann.notes) {
-      if (!existingDot) {
-        const dot = document.createElement('div');
-        dot.className = 'cttv-note-dot';
-        outer.appendChild(dot);
+      if (existingSat) {
+        const td = existingSat.querySelector('.cttv-satellite-text');
+        if (td) td.textContent = ann.notes;
+      } else {
+        const nx = parseInt(outer.style.left);
+        const ny = parseInt(outer.style.top);
+        map.appendChild(createSatelliteEl(nodeId, nx, ny, ann.notes));
+        if (svgEl) {
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          path.dataset.satelliteEdgeFor = nodeId;
+          path.setAttribute('d', `M${nx + NODE_W},${ny + NODE_H / 2} L${nx + NODE_W + SATELLITE_GAP},${ny + NODE_H / 2}`);
+          path.setAttribute('stroke', '#88ccff');
+          path.setAttribute('stroke-width', '1.5');
+          path.setAttribute('fill', 'none');
+          svgEl.appendChild(path);
+        }
       }
     } else {
-      existingDot?.remove();
+      existingSat?.remove();
+      existingEdge?.remove();
     }
   }
 
@@ -709,14 +773,7 @@ function initPanel(adapter) {
       saveAnnotations();
       hideMenu();
     } else if (action === 'notes') {
-      const dialog = document.getElementById('cttv-notes-dialog');
-      dialog.dataset.nodeId = id;
-      document.getElementById('cttv-notes-ta').value = cttvAnnotations[id]?.notes || '';
-      document.getElementById('cttv-notes-preview-toggle').checked = cttvAnnotations[id]?.notesPreview !== false;
-      const hasNotes = (cttvAnnotations[id]?.notes || '').trim().length > 0;
-      document.getElementById('cttv-notes-preview-label').style.display = hasNotes ? '' : 'none';
-      dialog.classList.remove('hidden');
-      document.getElementById('cttv-notes-ta').focus();
+      openNotesDialog(id);
       hideMenu();
     } else if (action === 'unimportant') {
       const newVal = !cttvAnnotations[id]?.unimportant;
@@ -1045,8 +1102,8 @@ function initPanel(adapter) {
         id: n.id,
         type: 'text',
         text: nodeText,
-        x: Math.round(n.col * NODE_STRIDE_X * 3),
-        y: Math.round(n.depth * NODE_STRIDE_Y * 2.5),
+        x: Math.round(n.col * 300),
+        y: Math.round(n.depth * 200),
         width: 250,
         height: 100,
         color: obsidianColor(n.id, ann),
