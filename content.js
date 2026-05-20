@@ -130,6 +130,7 @@
 
   const tooltip = document.createElement('div');
   tooltip.id = 'cttv-tooltip';
+  tooltip.style.pointerEvents = 'none';
   document.body.appendChild(tooltip);
 
   document.getElementById('cttv-close').addEventListener('click', () => {

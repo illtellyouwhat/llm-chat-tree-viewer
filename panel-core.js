@@ -248,7 +248,7 @@ function initPanel(adapter) {
 
     function positionTooltip(tt, e) {
       const x = Math.min(e.clientX + 12, window.innerWidth - 300);
-      const y = Math.max(e.clientY - 220, 8);
+      const y = Math.min(e.clientY + 16, window.innerHeight - 220);
       tt.style.left = x + 'px';
       tt.style.top = y + 'px';
     }
@@ -298,6 +298,11 @@ function initPanel(adapter) {
       }
 
       outer.appendChild(inner);
+      if (ann.notes) {
+        const dot = document.createElement('div');
+        dot.className = 'cttv-note-dot';
+        outer.appendChild(dot);
+      }
       map.appendChild(outer);
 
       outer.addEventListener('click', (e) => {
@@ -386,6 +391,16 @@ function initPanel(adapter) {
         starEl.textContent = '⭐';
         inner.insertBefore(starEl, inner.firstChild);
       }
+    }
+    const existingDot = outer.querySelector('.cttv-note-dot');
+    if (ann.notes) {
+      if (!existingDot) {
+        const dot = document.createElement('div');
+        dot.className = 'cttv-note-dot';
+        outer.appendChild(dot);
+      }
+    } else {
+      existingDot?.remove();
     }
   }
 
