@@ -521,9 +521,16 @@
     statusObserver.observe(statusEl, { childList: true, subtree: true, characterData: true });
   }
 
+  let lastDragSelection = '';
+  document.addEventListener('selectionchange', () => {
+    const sel = window.getSelection()?.toString()?.trim();
+    if (sel) lastDragSelection = sel;
+  });
+
   document.addEventListener('dragstart', (e) => {
     if (e.target.closest('#cttv-panel')) return;
-    const text = window.getSelection()?.toString()?.trim();
+    const text = window.getSelection()?.toString()?.trim() || lastDragSelection;
+    lastDragSelection = '';
     if (!text) return;
     if (typeof createNoteFromDrag === 'function') {
       createNoteFromDrag(text);

@@ -123,6 +123,7 @@ function initPanel(adapter) {
     el.style.left = note.x + 'px';
     el.style.top = note.y + 'px';
     if (note.width) el.style.width = note.width + 'px';
+    if (note.height) el.style.height = note.height + 'px';
 
     const handle = document.createElement('div');
     handle.className = 'cttv-sticky-note-handle';
@@ -177,6 +178,14 @@ function initPanel(adapter) {
       if (dragging) {
         dragging = false;
         document.body.style.userSelect = '';
+        saveCanvasNotes();
+      }
+    });
+    el.addEventListener('mouseup', () => {
+      const n = cttvCanvasNotes.find(n => n.id === note.id);
+      if (n) {
+        n.width = el.offsetWidth;
+        n.height = el.offsetHeight;
         saveCanvasNotes();
       }
     });
@@ -312,7 +321,7 @@ function initPanel(adapter) {
           const chainParts = chainRaw.message?.content?.parts || [];
           if (nodeRole === 'assistant' || nodeRole === 'tool') {
             const chainText = chainParts.filter(p => typeof p === 'string').join('');
-            if (chainText) chainTexts.push(chainText);
+            if (chainText && nodeRole === 'assistant') chainTexts.push(chainText);
             if (ct === 'multimodal_text' || chainParts.some(p => p?.content_type === 'image_asset_pointer')) hasImage = true;
             if (chainText && /sandbox:\/mnt\/data/.test(chainText)) hasFile = true;
             if (nodeRole === 'assistant') chainId = chainCurId;

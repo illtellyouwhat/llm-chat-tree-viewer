@@ -435,6 +435,9 @@
   box-shadow: 0 2px 8px rgba(0,0,0,0.5);
   min-width: 160px;
   width: 180px;
+  min-height: 80px;
+  resize: both;
+  overflow: hidden;
 }
 
 .cttv-sticky-note-handle {
@@ -473,8 +476,7 @@
   line-height: 1.4;
   padding: 6px 8px;
   resize: none;
-  min-height: 60px;
-  width: 100%;
+  flex: 1;
   box-sizing: border-box;
   outline: none;
 }
