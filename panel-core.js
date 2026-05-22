@@ -110,6 +110,27 @@ function initPanel(adapter) {
     });
   }
 
+  function renderMarkdownLinks(text) {
+    const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return escaped.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, (_, label, url) => {
+      const safeUrl = url.replace(/"/g, '%22');
+      return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="color:#88ccff">${label}</a>`;
+    });
+  }
+
+  function isCTTVDrag(e) {
+    return e.dataTransfer.types.includes('application/cttv-link') ||
+           e.dataTransfer.types.includes('application/cttv-text');
+  }
+
+  function getDragContent(e) {
+    if (e.dataTransfer.types.includes('application/cttv-link'))
+      return e.dataTransfer.getData('application/cttv-link') || e.dataTransfer.getData('text/plain') || null;
+    if (e.dataTransfer.types.includes('application/cttv-text'))
+      return e.dataTransfer.getData('application/cttv-text') || null;
+    return null;
+  }
+
   function renderCanvasNotes() {
     document.querySelectorAll('.cttv-sticky-note').forEach(el => el.remove());
     const body = document.getElementById('cttv-body');
@@ -177,17 +198,77 @@ function initPanel(adapter) {
       el.style.top = note.y + 'px';
     });
     document.addEventListener('mouseup', () => {
-      if (dragging) {
-        dragging = false;
-        document.body.style.userSelect = '';
-        saveCanvasNotes();
+      if (!dragging) return;
+      dragging = false;
+      document.body.style.userSelect = '';
+
+      // Check if center of dragged note lands inside another sticky note or satellite note
+      const cx = note.x + el.offsetWidth / 2;
+      const cy = note.y + el.offsetHeight / 2;
+
+      for (const other of cttvCanvasNotes) {
+        if (other.id === note.id) continue;
+        const otherEl = document.querySelector(`.cttv-sticky-note[data-note-id="${other.id}"]`);
+        if (!otherEl) continue;
+        if (cx >= other.x && cx <= other.x + otherEl.offsetWidth &&
+            cy >= other.y && cy <= other.y + otherEl.offsetHeight) {
+          other.text = other.text ? other.text + '\n\n' + note.text : note.text;
+          const targetTa = otherEl.querySelector('.cttv-sticky-note-ta');
+          if (targetTa) targetTa.value = other.text;
+          cttvCanvasNotes = cttvCanvasNotes.filter(n => n.id !== note.id);
+          el.remove();
+          saveCanvasNotes();
+          return;
+        }
       }
+
+      const body = document.getElementById('cttv-body');
+      const bodyBr = body.getBoundingClientRect();
+      for (const sat of document.querySelectorAll('.cttv-satellite-note')) {
+        const br = sat.getBoundingClientRect();
+        const satX = br.left - bodyBr.left + body.scrollLeft;
+        const satY = br.top - bodyBr.top + body.scrollTop;
+        if (cx >= satX && cx <= satX + br.width && cy >= satY && cy <= satY + br.height) {
+          const nodeId = sat.dataset.satelliteFor;
+          if (nodeId) {
+            if (!cttvAnnotations[nodeId]) cttvAnnotations[nodeId] = {};
+            const ann = cttvAnnotations[nodeId];
+            ann.notes = ann.notes ? ann.notes + '\n\n' + note.text : note.text;
+            cttvCanvasNotes = cttvCanvasNotes.filter(n => n.id !== note.id);
+            el.remove();
+            refreshNode(nodeId);
+            saveAnnotations();
+            saveCanvasNotes();
+            return;
+          }
+        }
+      }
+
+      saveCanvasNotes();
     });
     el.addEventListener('mouseup', () => {
       const n = cttvCanvasNotes.find(n => n.id === note.id);
       if (n) {
         n.width = el.offsetWidth;
         n.height = el.offsetHeight;
+        saveCanvasNotes();
+      }
+    });
+
+    el.addEventListener('dragover', (e) => {
+      if (isCTTVDrag(e)) { e.preventDefault(); e.stopPropagation(); }
+    });
+    el.addEventListener('drop', (e) => {
+      if (!isCTTVDrag(e)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const content = getDragContent(e);
+      if (!content) return;
+      const n = cttvCanvasNotes.find(n => n.id === note.id);
+      if (n) {
+        n.text = n.text ? n.text + '\n\n' + content : content;
+        const ta = el.querySelector('.cttv-sticky-note-ta');
+        if (ta) ta.value = n.text;
         saveCanvasNotes();
       }
     });
@@ -403,11 +484,25 @@ function initPanel(adapter) {
     const sat = document.createElement('div');
     sat.className = 'cttv-satellite-note';
     sat.dataset.satelliteFor = nodeId;
-    sat.style.cssText = `position:absolute;left:${nx + NODE_W + SATELLITE_GAP}px;top:${ny}px;width:${SATELLITE_W}px;min-height:${NODE_H}px;max-height:${NODE_H}px;z-index:1;`;
+    sat.style.cssText = `position:absolute;left:${nx + NODE_W + SATELLITE_GAP}px;top:${ny}px;width:${SATELLITE_W}px;min-height:${NODE_H}px;max-height:${NODE_H}px;z-index:1;justify-content:flex-start;`;
+
+    const del = document.createElement('button');
+    del.className = 'cttv-sticky-delete';
+    del.textContent = '×';
+    del.title = 'Delete note';
+    del.style.cssText = 'align-self:flex-end;margin:2px 4px 0 0;';
+    del.addEventListener('click', (e) => {
+      e.stopPropagation();
+      sat.remove();
+      document.getElementById('cttv-map')?.querySelector(`[data-satellite-edge-for="${nodeId}"]`)?.remove();
+      if (cttvAnnotations[nodeId]) delete cttvAnnotations[nodeId].notes;
+      saveAnnotations();
+    });
+    sat.appendChild(del);
 
     const textDiv = document.createElement('div');
     textDiv.className = 'cttv-satellite-text';
-    textDiv.textContent = noteText;
+    textDiv.innerHTML = renderMarkdownLinks(noteText);
     sat.appendChild(textDiv);
 
     sat.addEventListener('mouseenter', () => {
@@ -421,8 +516,25 @@ function initPanel(adapter) {
       textDiv.classList.remove('cttv-satellite-text-expanded');
     });
     sat.addEventListener('click', (e) => {
+      if (e.target.tagName === 'A') return;
       e.stopPropagation();
       openNotesDialog(nodeId);
+    });
+
+    sat.addEventListener('dragover', (e) => {
+      if (isCTTVDrag(e)) { e.preventDefault(); e.stopPropagation(); }
+    });
+    sat.addEventListener('drop', (e) => {
+      if (!isCTTVDrag(e)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const content = getDragContent(e);
+      if (!content) return;
+      if (!cttvAnnotations[nodeId]) cttvAnnotations[nodeId] = {};
+      const ann = cttvAnnotations[nodeId];
+      ann.notes = ann.notes ? ann.notes + '\n\n' + content : content;
+      refreshNode(nodeId);
+      saveAnnotations();
     });
 
     return sat;
@@ -644,7 +756,7 @@ function initPanel(adapter) {
     if (ann.notes) {
       if (existingSat) {
         const td = existingSat.querySelector('.cttv-satellite-text');
-        if (td) td.textContent = ann.notes;
+        if (td) td.innerHTML = renderMarkdownLinks(ann.notes);
       } else {
         const nx = parseInt(outer.style.left);
         const ny = parseInt(outer.style.top);
@@ -805,6 +917,7 @@ function initPanel(adapter) {
       cttvAnnotations[id] = { ...cttvAnnotations[id], notes: notes || undefined };
       if (!notes) delete cttvAnnotations[id].notes;
       saveAnnotations();
+      refreshNode(id);
     }
     document.getElementById('cttv-notes-dialog').classList.add('hidden');
   });
@@ -1074,16 +1187,18 @@ function initPanel(adapter) {
       '#c6f': '6',
     };
 
-    function obsidianColor(nodeId, ann) {
+    const STRIDE_X = 500;
+    const STRIDE_Y = 200;
+    const NODE_W = 250;
+    const NODE_H = 100;
+    const SAT_GAP = 30;
+    const SAT_W = 200;
+    const SAT_H = 100;
+
+    function obsidianColor(ann) {
       if (ann?.color && OBSIDIAN_COLOR[ann.color]) return OBSIDIAN_COLOR[ann.color];
       if (ann?.star) return '3';
       return '';
-    }
-
-    function truncate(text, max) {
-      if (!text || text.length <= max) return text || '';
-      const cut = text.lastIndexOf(' ', max);
-      return text.slice(0, cut > 0 ? cut : max) + '...';
     }
 
     const treeCopy = JSON.parse(JSON.stringify(cttvTree));
@@ -1095,19 +1210,50 @@ function initPanel(adapter) {
 
     for (const n of allNodes) {
       const ann = cttvAnnotations[n.id] || {};
-      let nodeText = n.role === 'root' ? 'START' : truncate(n.text, 300);
-      if (ann.notes) nodeText += `\n\n---\n📝 ${ann.notes}`;
+      const x = n.col * STRIDE_X;
+      const y = n.depth * STRIDE_Y;
 
-      canvasNodes.push({
-        id: n.id,
-        type: 'text',
-        text: nodeText,
-        x: Math.round(n.col * 300),
-        y: Math.round(n.depth * 200),
-        width: 250,
-        height: 100,
-        color: obsidianColor(n.id, ann),
-      });
+      let nodeText = n.role === 'root' ? 'START' : n.text;
+      if (ann.star) nodeText = '⭐ ' + nodeText;
+
+      if (ann.unimportant) {
+        canvasNodes.push({
+          id: n.id, type: 'text', text: nodeText,
+          x: Math.round(x), y: Math.round(y),
+          width: 60, height: 30,
+          color: obsidianColor(ann),
+        });
+      } else {
+        const nodeH = Math.max(NODE_H, Math.min(600, Math.ceil(nodeText.length / 38) * 22 + 24));
+        canvasNodes.push({
+          id: n.id, type: 'text', text: nodeText,
+          x: Math.round(x), y: Math.round(y),
+          width: NODE_W, height: nodeH,
+          color: obsidianColor(ann),
+        });
+      }
+
+      if (ann.notes) {
+        const satId = `sat-${n.id}`;
+        canvasNodes.push({
+          id: satId,
+          type: 'text',
+          text: `📝 ${ann.notes}`,
+          x: Math.round(x + NODE_W + SAT_GAP),
+          y: Math.round(y),
+          width: SAT_W,
+          height: SAT_H,
+          color: '5',
+        });
+        canvasEdges.push({
+          id: `sat-edge-${n.id}`,
+          fromNode: n.id,
+          fromSide: 'right',
+          toNode: satId,
+          toSide: 'left',
+          color: '',
+        });
+      }
 
       for (const child of (n.children || [])) {
         canvasEdges.push({
@@ -1119,6 +1265,63 @@ function initPanel(adapter) {
           color: '',
         });
       }
+    }
+
+    if (cttvCanvasNotes.length > 0) {
+      const maxDepth = Math.max(...allNodes.map(n => n.depth), 0);
+      const stickyStartY = (maxDepth + 2) * STRIDE_Y;
+      cttvCanvasNotes.forEach((note, i) => {
+        if (!note.text?.trim()) return;
+        canvasNodes.push({
+          id: `sticky-${note.id}`,
+          type: 'text',
+          text: note.text,
+          x: (i % 4) * 280,
+          y: stickyStartY + Math.floor(i / 4) * 200,
+          width: note.width || 250,
+          height: 150,
+          color: '3',
+        });
+      });
+    }
+
+    const colorKeyEntries = Object.entries(cttvColorKey).filter(([k, label]) => k !== '_visible' && typeof label === 'string' && label.trim());
+    if (colorKeyEntries.length > 0) {
+      const keyX = -230;
+      const keyNodeX = keyX + 10;
+      const groupH = colorKeyEntries.length * 70 + 70;
+      canvasNodes.push({
+        id: 'colorkey-group',
+        type: 'group',
+        label: '🎨 Color Key',
+        x: keyX,
+        y: -10,
+        width: 180,
+        height: groupH,
+        color: '',
+      });
+      canvasNodes.push({
+        id: 'colorkey-header',
+        type: 'text',
+        text: '🎨 Color Key',
+        x: keyNodeX,
+        y: 0,
+        width: 160,
+        height: 50,
+        color: '',
+      });
+      colorKeyEntries.forEach(([hex, label], i) => {
+        canvasNodes.push({
+          id: `colorkey-${hex.replace('#', '')}`,
+          type: 'text',
+          text: label,
+          x: keyNodeX,
+          y: 70 + i * 70,
+          width: 160,
+          height: 50,
+          color: OBSIDIAN_COLOR[hex] || '',
+        });
+      });
     }
 
     const canvasJson = JSON.stringify({ nodes: canvasNodes, edges: canvasEdges }, null, 2);
@@ -1135,6 +1338,18 @@ function initPanel(adapter) {
 
     s.textContent = `Exported ${canvasNodes.length} node(s) as Obsidian Canvas.`;
     delete s.dataset.error;
+  });
+
+  // Text/link drop on empty panel space → new sticky note
+  const cttvBody = document.getElementById('cttv-body');
+  cttvBody.addEventListener('dragover', (e) => {
+    if (isCTTVDrag(e)) e.preventDefault();
+  });
+  cttvBody.addEventListener('drop', (e) => {
+    if (!isCTTVDrag(e)) return;
+    e.preventDefault();
+    const content = getDragContent(e);
+    if (content) createNoteFromDrag(content);
   });
 
   // Boot — adapter initialises prefs, conversation data, etc.
