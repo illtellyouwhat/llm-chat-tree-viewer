@@ -1098,6 +1098,14 @@ function initPanel(adapter) {
         '#c6f': 'Purple',
       };
 
+      const COLOR_SWATCH = {
+        '#e55': '🟥',
+        '#e93': '🟧',
+        '#9c9': '🟩',
+        '#69f': '🟦',
+        '#c6f': '🟪',
+      };
+
       function colorLabel(hex) {
         return colorKey[hex] || COLOR_NAMES[hex] || hex;
       }
@@ -1222,7 +1230,7 @@ function initPanel(adapter) {
         lines.push('');
 
         if (ann.star) lines.push('★');
-        if (ann.color) lines.push('Color: ' + colorLabel(ann.color) + ' — ' + ann.color);
+        if (ann.color) lines.push((COLOR_SWATCH[ann.color] || '🎨') + ' ' + colorLabel(ann.color));
         if (ann.notes) lines.push('**📝 Notes:** ' + ann.notes);
         if (ann.star || ann.color || ann.notes) lines.push('');
         lines.push('---');
