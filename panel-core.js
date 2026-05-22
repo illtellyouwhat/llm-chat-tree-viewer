@@ -1224,6 +1224,8 @@ function initPanel(adapter) {
         if (ann.color) lines.push('Color: ' + colorLabel(ann.color) + ' — ' + ann.color);
         if (ann.notes) lines.push('**📝 Notes:** ' + ann.notes);
         if (ann.star || ann.color || ann.notes) lines.push('');
+        lines.push('---');
+        lines.push('');
       });
 
       var stickyNotes = cttvCanvasNotes.filter(function(n) {
