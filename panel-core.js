@@ -1186,13 +1186,9 @@ function initPanel(adapter) {
         lines.push('## Color Key');
         lines.push('');
         usedColors.forEach(function(hex) {
-          var defaultName = COLOR_NAMES[hex] || hex;
-          var userLabel = colorKey[hex];
-          var entry = defaultName + ' (' + hex + ')';
-          if (userLabel && userLabel.trim() && userLabel !== defaultName) {
-            entry += ' — ' + userLabel;
-          }
-          lines.push('- ' + entry);
+          var swatch = COLOR_SWATCH[hex] || '🎨';
+          var label = colorKey[hex] && colorKey[hex].trim() ? colorKey[hex] : (COLOR_NAMES[hex] || hex);
+          lines.push('- ' + swatch + ' ' + label);
         });
         lines.push('');
         lines.push('---');
@@ -1214,6 +1210,11 @@ function initPanel(adapter) {
           ? '~~' + roleLabel + ' — ' + snippet + '~~'
           : roleLabel + ' — ' + snippet;
 
+        if (ann.star) lines.push('★');
+        if (ann.color) lines.push((COLOR_SWATCH[ann.color] || '🎨') + ' ' + colorLabel(ann.color));
+        if (ann.notes) lines.push('**📝 Notes:** ' + ann.notes);
+        if (ann.star || ann.color || ann.notes) lines.push('');
+
         var turnType = node.role === 'user' ? 'question' : 'success';
         lines.push('> [!' + turnType + ']- ' + titleText);
 
@@ -1228,11 +1229,6 @@ function initPanel(adapter) {
         }
 
         lines.push('');
-
-        if (ann.star) lines.push('★');
-        if (ann.color) lines.push((COLOR_SWATCH[ann.color] || '🎨') + ' ' + colorLabel(ann.color));
-        if (ann.notes) lines.push('**📝 Notes:** ' + ann.notes);
-        if (ann.star || ann.color || ann.notes) lines.push('');
         lines.push('---');
         lines.push('');
       });
