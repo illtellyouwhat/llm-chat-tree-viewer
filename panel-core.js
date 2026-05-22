@@ -1224,11 +1224,10 @@ function initPanel(adapter) {
           color: obsidianColor(ann),
         });
       } else {
-        const nodeH = Math.max(NODE_H, Math.min(600, Math.ceil(nodeText.length / 38) * 22 + 24));
         canvasNodes.push({
           id: n.id, type: 'text', text: nodeText,
           x: Math.round(x), y: Math.round(y),
-          width: NODE_W, height: nodeH,
+          width: NODE_W, height: NODE_H,
           color: obsidianColor(ann),
         });
       }
@@ -1242,7 +1241,7 @@ function initPanel(adapter) {
           x: Math.round(x + NODE_W + SAT_GAP),
           y: Math.round(y),
           width: SAT_W,
-          height: SAT_H,
+          height: Math.max(SAT_H, Math.min(400, Math.ceil(ann.notes.length / 33) * 22 + 24)),
           color: '5',
         });
         canvasEdges.push({
@@ -1268,18 +1267,17 @@ function initPanel(adapter) {
     }
 
     if (cttvCanvasNotes.length > 0) {
-      const maxDepth = Math.max(...allNodes.map(n => n.depth), 0);
-      const stickyStartY = (maxDepth + 2) * STRIDE_Y;
-      cttvCanvasNotes.forEach((note, i) => {
+      const MAP_PADDING = 20;
+      cttvCanvasNotes.forEach((note) => {
         if (!note.text?.trim()) return;
         canvasNodes.push({
           id: `sticky-${note.id}`,
           type: 'text',
           text: note.text,
-          x: (i % 4) * 280,
-          y: stickyStartY + Math.floor(i / 4) * 200,
+          x: Math.round((note.x - MAP_PADDING) * (STRIDE_X / NODE_STRIDE_X)),
+          y: Math.round((note.y - MAP_PADDING) * (STRIDE_Y / NODE_STRIDE_Y)),
           width: note.width || 250,
-          height: 150,
+          height: note.height || 150,
           color: '3',
         });
       });

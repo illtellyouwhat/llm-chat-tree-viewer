@@ -1,0 +1,118 @@
+{
+  "entries": [
+    {
+      "date": "2026-05-20",
+      "session": 1,
+      "session_goal": "Bootstrap lock-file workflow: CLAUDE.md files, roadmap, all lock files, all pre-writable specs",
+      "decisions": [
+        "Adopted advisor/executor separation via lock-file workflow skill v3.0",
+        "Confirmed PRD build order as fixed: F1+F2 → U1 → N1/N2/N3 → E1/E2 → A1/A2 → N4/S1",
+        "Confirmed all PRD architecture decisions as locked",
+        "Established five lock file domains: architecture, ui-components, data-model, export-formats, platform-adapters",
+        "Bundled F1 and F2 into single executor session (F2 is trivial after F1)",
+        "Chose in-place vertical expansion (80px wide, grows downward) for U1 — no layout refactor",
+        "Canvas notes (N1) stored in cttv-canvas-${conversationId}; color key in global cttv-colorkey",
+        "E1 exports annotated turns only (markdown); E2 exports full tree (Obsidian Canvas JSON)",
+        "A1, A2, N4, S1 specs NOT written — require DOM analysis or design sessions first",
+        "Phase 1 (F1+F2) activated in current-phase/ — ready for executor session"
+      ],
+      "spec_created": "SPEC-Phase1-bug-fixes.md",
+      "commit_hash": "9b9ae22"
+    }
+  ,
+    {
+      "date": "2026-05-20",
+      "session": 2,
+      "session_goal": "Triage post-Phase-7 UX issues; write Phase 8 and Phase 9 specs; update locks and roadmap; activate Phase 8",
+      "decisions": [
+        "Pin-on-click mechanic removed entirely — click always navigates (Phase 8)",
+        "Node text always visible with -webkit-line-clamp:2 default, not toggled by JS (Phase 8)",
+        "Hover expansion width increased from 80px to 220px (Phase 8)",
+        "Expansion class-based via .cttv-node-text-expanded, not inline style toggle (Phase 8)",
+        "refreshNode() height:100% bug fixed to min-height:100%;height:auto (Phase 8)",
+        "Tool node text excluded from chainTexts — only assistant nodes push display text (Phase 9)",
+        "selectionchange listener added to fix drag-to-note reliability (Phase 9 — overlaps Phase 5 intent)",
+        "Sticky notes gain resize:both + overflow:hidden + mouseup dimension save (Phase 9)",
+        "StickyNote schema extended with height?: number field (LOCK-data-model v1.1)",
+        "LOCK-ui-components updated to v1.1 reflecting Phase 8 node expansion design",
+        "ROADMAP updated: old Phases 8-11 renumbered to 10-13; new Phases 8-9 inserted",
+        "Phase 8 activated in current-phase/ (SPEC + LOCK-architecture + LOCK-ui-components)"
+      ],
+      "spec_created": "SPEC-Phase8-navigation-and-node-ux.md",
+      "commit_hash": "2df04d8"
+    }
+  ,
+    {
+      "date": "2026-05-20",
+      "session": 3,
+      "session_goal": "Triage post-Phase-9 runtime errors; design and write Phase 10 (node width + note satellites)",
+      "decisions": [
+        "e.target.closest crash confirmed — Phase 9 executor ran before spec update; fix carried into Phase 10",
+        "Node width changed to permanent 220px — hover expands height only, no width animation (Phase 10)",
+        "NODE_STRIDE_X changed to 480 to reserve satellite space: node(220) + sat-gap(20) + satellite(220) + col-gap(20)",
+        "Obsidian Canvas export x-coordinate decoupled from NODE_STRIDE_X — now fixed at col*300",
+        "Note dot (.cttv-note-dot) replaced by satellite note nodes — same shape as main node, positioned to the right",
+        "Satellite connected by short horizontal SVG line (stroke #88ccff)",
+        "Satellite hover: height expands to 260px, shows full note with scroll (same mechanic as main nodes)",
+        "Satellite click: opens notes dialog for that node (openNotesDialog() helper extracted from menu handler)",
+        "Satellite managed by renderMap() on initial render and refreshNode() on incremental note changes",
+        "LOCK-ui-components updated to v1.2 with satellite constants and behavior",
+        "Single source of truth for lock files confirmed: all 5 live in current-phase/ only",
+        "Lock files now persisted across phase activations — only spec file is replaced per phase"
+      ],
+      "spec_created": "SPEC-Phase10-node-width-and-note-satellites.md",
+      "commit_hash": "7d4c285"
+    }
+  ,
+    {
+      "date": "2026-05-20",
+      "session": 4,
+      "session_goal": "Fix three satellite note bugs discovered during live testing: note not appearing on create, notes gated on star/color, no delete button on satellite notes",
+      "decisions": [
+        "refreshNode(id) was never called after cttv-notes-save — satellite note element never created until re-render; fixed by adding refreshNode(id) after saveAnnotations() in save handler",
+        "Notes are structurally independent of star/color in refreshNode already — root cause was missing refreshNode call, not conditional gating",
+        "Satellite notes gain an × delete button (reuses .cttv-sticky-delete style) — click removes element, edge, clears ann.notes, saves",
+        "justify-content overridden to flex-start on satellite to accommodate delete button above text",
+        "NOTE: this session bypassed advisor/executor separation — fixes implemented directly without a spec; no spec file written"
+      ],
+      "spec_created": null,
+      "commit_hash": null
+    }
+  ,
+    {
+      "date": "2026-05-21",
+      "session": 1,
+      "session_goal": "Fix satellite note visibility bug, add satellite delete button, diagnose WSL2 dev environment issue, improve Obsidian Canvas export fidelity",
+      "decisions": [
+        "Root cause of note not appearing: refreshNode(id) was never called from cttv-notes-save handler — data was saved but DOM never updated",
+        "Satellite × button added to createSatelliteEl() — matches sticky note pattern, click removes element + edge + annotation + saves",
+        "WSL2 Windows Explorer file caching diagnosed: Explorer reads stale bytes when copying from \\\\wsl$\\ path; fix is to point Chrome directly at WSL repo via Load Unpacked",
+        "Canvas export: stars now export as ⭐ text prefix + yellow background ('3') for starred-only nodes",
+        "Canvas export: unimportant nodes export as 👁 text prefix",
+        "Canvas export: notes now separate satellite nodes (color '5') to the right with right→left edge, replacing inline text append",
+        "Canvas export: sticky notes exported as floating yellow nodes below tree in 4-column grid",
+        "Canvas export: col stride widened 300→500 to prevent satellite overlap with adjacent column nodes",
+        "Color key canvas export identified as missing — deferred to next session",
+        "docs/ folder created with debugging-lessons.md documenting root causes and spec rules"
+      ],
+      "spec_created": null,
+      "commit_hash": null
+    }
+  ,
+    {
+      "date": "2026-05-22",
+      "session": 1,
+      "session_goal": "Phase 11: two canvas export improvements — unimportant node minimization and full-text export",
+      "decisions": [
+        "Unimportant nodes: remove 👁 prefix; export as 60×30 minimal slivers instead of full-size nodes — full text preserved for recoverability in Obsidian",
+        "Full text export: remove truncate(n.text, 300) limit; use n.text directly for all nodes",
+        "Dynamic node height: Math.max(NODE_H, Math.min(600, Math.ceil(text.length / 38) * 22 + 24)) — min 100px, max 600px",
+        "Satellite notes unchanged — still export at SAT_H = 100 fixed; export for all nodes including unimportant",
+        "LOCK-export-formats updated to v1.1 with accurate current constants (STRIDE_X=500, not 300 as v1.0 stated) and Phase 11 rules",
+        "truncate() helper in canvas export scope can be removed — no longer called; markdown export has its own copy in a different scope"
+      ],
+      "spec_created": "SPEC-Phase11-canvas-unimportant-and-full-text.md",
+      "commit_hash": null
+    }
+  ]
+}

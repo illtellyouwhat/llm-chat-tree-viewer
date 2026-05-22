@@ -529,16 +529,21 @@
 
   document.addEventListener('dragstart', (e) => {
     if (e.target?.closest?.('#cttv-panel')) return;
+
+    const anchor = e.target?.closest?.('a');
+    if (anchor?.href) {
+      const linkText = anchor.textContent?.trim() || anchor.href;
+      const md = `[${linkText}](${anchor.href})`;
+      e.dataTransfer?.setData('text/plain', md);
+      e.dataTransfer?.setData('application/cttv-link', md);
+      return;
+    }
+
     const text = window.getSelection()?.toString()?.trim() || lastDragSelection;
     lastDragSelection = '';
     if (!text) return;
-    if (typeof createNoteFromDrag === 'function') {
-      createNoteFromDrag(text);
-      return;
-    }
-    try {
-      chrome.runtime.sendMessage({ type: 'dragToNote', text }).catch(() => {});
-    } catch (_) {}
+    e.dataTransfer?.setData('application/cttv-text', text);
+    e.dataTransfer?.setData('text/plain', text);
   });
 
 })();
