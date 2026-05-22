@@ -1102,67 +1102,68 @@ function initPanel(adapter) {
         return colorKey[hex] || COLOR_NAMES[hex] || hex;
       }
 
-      const CALLOUT_TYPE = {
-        '#e55': 'danger',
-        '#e93': 'warning',
-        '#9c9': 'success',
-        '#69f': 'info',
-        '#c6f': 'abstract',
-      };
-
-      function calloutType(ann) {
-        if (ann.color && CALLOUT_TYPE[ann.color]) return CALLOUT_TYPE[ann.color];
-        if (ann.star) return 'tip';
-        return 'note';
-      }
-
       function firstSentence(text, maxLen) {
         maxLen = maxLen || 70;
         if (!text) return '';
-        const firstLine = text.split('\n').find(function(l) { return l.trim(); }) || '';
-        const clean = firstLine.replace(/^#+\s*/, '').replace(/^\s*[>\-*`]\s*/, '').trim();
+        var firstLine = '';
+        var lines = text.split('\n');
+        for (var i = 0; i < lines.length; i++) {
+          if (lines[i].trim()) { firstLine = lines[i]; break; }
+        }
+        var clean = firstLine.replace(/^#+\s*/, '').replace(/^\s*[>\-*`]\s*/, '').trim();
         if (clean.length <= maxLen) return clean;
-        const sentEnd = clean.search(/[.!?]/);
+        var sentEnd = clean.search(/[.!?]/);
         if (sentEnd > 0 && sentEnd <= maxLen) return clean.slice(0, sentEnd + 1);
-        const cut = clean.lastIndexOf(' ', maxLen);
+        var cut = clean.lastIndexOf(' ', maxLen);
         return clean.slice(0, cut > 0 ? cut : maxLen) + '…';
       }
 
-      const annotated = [];
+      function collapseChar(node, ann) {
+        if (ann.unimportant) return '-';
+        return node.role === 'user' ? '+' : '-';
+      }
+
+      var allTurns = [];
 
       function walk(node, branchLabel, branchSnippet) {
         if (node.role !== 'root') {
-          const ann = cttvAnnotations[node.id] || {};
-          if (ann.star || ann.color || ann.notes) {
-            annotated.push({ node, ann, branchLabel: branchLabel || null, branchSnippet: branchSnippet || null });
-          }
+          var ann = cttvAnnotations[node.id] || {};
+          allTurns.push({
+            node: node,
+            ann: ann,
+            branchLabel: branchLabel || null,
+            branchSnippet: branchSnippet || null
+          });
         }
-        const children = node.children || [];
+        var children = node.children || [];
         if (children.length > 1) {
-          const snippet = firstSentence(node.text || '', 40);
+          var snippet = firstSentence(node.text || '', 40);
           children.forEach(function(child, i) {
             walk(child, String.fromCharCode(65 + i), snippet);
           });
         } else {
-          for (const child of children) walk(child, branchLabel, branchSnippet);
+          for (var i = 0; i < children.length; i++) {
+            walk(children[i], branchLabel, branchSnippet);
+          }
         }
       }
 
       walk(cttvTree, null, null);
 
-      if (annotated.length === 0) {
-        const s = document.getElementById('cttv-settings-status');
-        s.textContent = 'Nothing to export — annotate some turns first.';
+      var s = document.getElementById('cttv-settings-status');
+
+      if (allTurns.length === 0) {
+        s.textContent = 'No conversation loaded.';
         s.dataset.error = '';
         return;
       }
 
-      const convUrl = conversationId
+      var convUrl = conversationId
         ? 'https://chatgpt.com/c/' + conversationId
         : '(unknown)';
-      const dateStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
+      var dateStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
 
-      const lines = [
+      var lines = [
         '# Chat Tree Export',
         '**Conversation:** ' + convUrl,
         '**Exported:** ' + dateStr,
@@ -1171,8 +1172,8 @@ function initPanel(adapter) {
         '',
       ];
 
-      const usedColors = [];
-      annotated.forEach(function(entry) {
+      var usedColors = [];
+      allTurns.forEach(function(entry) {
         if (entry.ann.color && usedColors.indexOf(entry.ann.color) === -1) {
           usedColors.push(entry.ann.color);
         }
@@ -1182,78 +1183,91 @@ function initPanel(adapter) {
         lines.push('## Color Key');
         lines.push('');
         usedColors.forEach(function(hex) {
-          const type = CALLOUT_TYPE[hex] || 'note';
-          const label = colorLabel(hex);
-          lines.push('> [!' + type + '] ' + label);
-          lines.push('');
+          var defaultName = COLOR_NAMES[hex] || hex;
+          var userLabel = colorKey[hex];
+          var entry = defaultName + ' (' + hex + ')';
+          if (userLabel && userLabel.trim() && userLabel !== defaultName) {
+            entry += ' — ' + userLabel;
+          }
+          lines.push('- ' + entry);
         });
+        lines.push('');
         lines.push('---');
         lines.push('');
       }
 
-      for (const entry of annotated) {
-        const node = entry.node;
-        const ann = entry.ann;
-        const branchLabel = entry.branchLabel;
-        const branchSnippet = entry.branchSnippet;
+      lines.push('# Conversation');
+      lines.push('');
 
-        const roleLabel = node.role === 'user' ? 'User' : 'Assistant';
-        const starPrefix = ann.star ? '★ ' : '';
-        const snippet = firstSentence(node.text);
-        const type = calloutType(ann);
+      allTurns.forEach(function(entry) {
+        var node = entry.node;
+        var ann = entry.ann;
+        var branchLabel = entry.branchLabel;
+        var branchSnippet = entry.branchSnippet;
 
-        lines.push('> [!' + type + ']- ' + starPrefix + roleLabel + ' — ' + snippet);
+        var roleLabel = node.role === 'user' ? 'User' : 'Assistant';
+        var starPrefix = ann.star ? '★ ' : '';
+        var snippet = firstSentence(node.text);
+        var collapse = collapseChar(node, ann);
+
+        lines.push('> [!note]' + collapse + ' ' + starPrefix + roleLabel + ' — ' + snippet);
+
+        var hasMeta = branchLabel || ann.color || ann.notes;
 
         if (branchLabel) {
           lines.push('> **Branch ' + branchLabel + '** — from: "' + branchSnippet + '"');
-          lines.push('>');
         }
-
-        const textLines = node.text.split('\n');
-        for (let i = 0; i < textLines.length; i++) {
-          lines.push(textLines[i] ? '> ' + textLines[i] : '>');
+        if (ann.color) {
+          lines.push('> Color: ' + colorLabel(ann.color) + ' — ' + ann.color);
         }
-
         if (ann.notes) {
-          lines.push('>');
           lines.push('> **📝 Notes:** ' + ann.notes);
         }
 
-        lines.push('');
-        lines.push('---');
-        lines.push('');
-      }
+        if (hasMeta) {
+          lines.push('>');
+        }
 
-      const stickyNotes = cttvCanvasNotes.filter(function(n) { return n.text && n.text.trim(); });
+        var textLines = node.text.split('\n');
+        for (var i = 0; i < textLines.length; i++) {
+          lines.push(textLines[i] ? '> ' + textLines[i] : '>');
+        }
+
+        lines.push('');
+      });
+
+      var stickyNotes = cttvCanvasNotes.filter(function(n) {
+        return n.text && n.text.trim();
+      });
+
       if (stickyNotes.length > 0) {
         lines.push('---');
         lines.push('');
         lines.push('# Sticky Notes');
         lines.push('');
         stickyNotes.forEach(function(note) {
-          lines.push('> [!note]');
-          const noteLines = note.text.split('\n');
-          for (let i = 0; i < noteLines.length; i++) {
+          lines.push('> [!warning]');
+          var noteLines = note.text.split('\n');
+          for (var i = 0; i < noteLines.length; i++) {
             lines.push(noteLines[i] ? '> ' + noteLines[i] : '>');
           }
           lines.push('');
         });
       }
 
-      const markdown = lines.join('\n');
-      const blob = new Blob([markdown], { type: 'text/markdown' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      var markdown = lines.join('\n');
+      var blob = new Blob([markdown], { type: 'text/markdown' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
       a.href = url;
-      a.download = `cttv-export-${conversationId || 'unknown'}.md`;
+      a.download = 'cttv-export-' + (conversationId || 'unknown') + '.md';
       a.style.cssText = 'position:fixed;top:-9999px;left:-9999px;';
       document.body.appendChild(a);
       a.dispatchEvent(new MouseEvent('click', { bubbles: false }));
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      document.getElementById('cttv-settings-status').textContent =
-        `Exported ${annotated.length} annotated turn(s).`;
+      s.textContent = 'Exported ' + allTurns.length + ' turn(s).';
     });
   });
 
