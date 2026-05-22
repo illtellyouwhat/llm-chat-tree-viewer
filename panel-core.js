@@ -15,6 +15,86 @@
 // }
 // Returns: { selectNode, loadConversationData, loadAnnotations, getMapping, getNodes, getTree, getSelectedId, refreshAllNodes }
 
+function tableToMd(tableEl) {
+  const rows = Array.from(tableEl.querySelectorAll('tr'));
+  if (!rows.length) return '';
+  const toCell = function(cell) { return cell.textContent.trim().replace(/\|/g, '\\|'); };
+  const headers = Array.from(rows[0].querySelectorAll('th, td')).map(toCell);
+  if (!headers.length) return '';
+  let md = '| ' + headers.join(' | ') + ' |\n';
+  md += '| ' + headers.map(function() { return '---'; }).join(' | ') + ' |\n';
+  for (let i = 1; i < rows.length; i++) {
+    const cells = Array.from(rows[i].querySelectorAll('td, th')).map(toCell);
+    md += '| ' + cells.join(' | ') + ' |\n';
+  }
+  return md + '\n';
+}
+
+function htmlToMarkdown(html) {
+  if (!html) return '';
+  const div = document.createElement('div');
+  div.innerHTML = html;
+
+  function convert(node) {
+    if (node.nodeType === Node.TEXT_NODE) return node.textContent;
+    if (node.nodeType !== Node.ELEMENT_NODE) return '';
+
+    const tag = node.tagName.toLowerCase();
+    const inner = function() {
+      return Array.from(node.childNodes).map(convert).join('');
+    };
+
+    switch (tag) {
+      case 'p':      return inner() + '\n\n';
+      case 'br':     return '\n';
+      case 'strong':
+      case 'b':      return '**' + inner() + '**';
+      case 'em':
+      case 'i':      return '*' + inner() + '*';
+      case 'h1':     return '# ' + inner() + '\n\n';
+      case 'h2':     return '## ' + inner() + '\n\n';
+      case 'h3':     return '### ' + inner() + '\n\n';
+      case 'a': {
+        const href = node.getAttribute('href') || '';
+        return '[' + inner() + '](' + href + ')';
+      }
+      case 'code': {
+        if (node.parentElement && node.parentElement.tagName.toLowerCase() === 'pre') {
+          return node.textContent;
+        }
+        return '`' + inner() + '`';
+      }
+      case 'pre': {
+        const codeEl = node.querySelector('code');
+        const lang = (codeEl && codeEl.className.match(/language-(\w+)/))
+          ? codeEl.className.match(/language-(\w+)/)[1]
+          : '';
+        const text = codeEl ? codeEl.textContent : node.textContent;
+        return '```' + lang + '\n' + text + '\n```\n\n';
+      }
+      case 'ul': {
+        const items = Array.from(node.childNodes)
+          .filter(function(c) { return c.nodeName && c.nodeName.toLowerCase() === 'li'; });
+        return items.map(function(li) {
+          return '- ' + convert(li).trim();
+        }).join('\n') + '\n\n';
+      }
+      case 'ol': {
+        const items = Array.from(node.childNodes)
+          .filter(function(c) { return c.nodeName && c.nodeName.toLowerCase() === 'li'; });
+        return items.map(function(li, idx) {
+          return (idx + 1) + '. ' + convert(li).trim();
+        }).join('\n') + '\n\n';
+      }
+      case 'li':     return inner();
+      case 'table':  return tableToMd(node);
+      default:       return inner();
+    }
+  }
+
+  return convert(div).trim();
+}
+
 function initPanel(adapter) {
   const NODE_W = 220;
   const NODE_H = 60;

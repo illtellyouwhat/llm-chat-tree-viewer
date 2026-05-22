@@ -539,7 +539,14 @@
       return;
     }
 
-    const text = window.getSelection()?.toString()?.trim() || lastDragSelection;
+    const selection = window.getSelection();
+    let mdText = '';
+    if (selection && selection.rangeCount > 0) {
+      const frag = document.createElement('div');
+      frag.appendChild(selection.getRangeAt(0).cloneContents());
+      mdText = htmlToMarkdown(frag.innerHTML).trim();
+    }
+    const text = mdText || selection?.toString()?.trim() || lastDragSelection;
     lastDragSelection = '';
     if (!text) return;
     e.dataTransfer?.setData('application/cttv-text', text);
