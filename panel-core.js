@@ -1118,11 +1118,6 @@ function initPanel(adapter) {
         return clean.slice(0, cut > 0 ? cut : maxLen) + '…';
       }
 
-      function collapseChar(node, ann) {
-        if (ann.unimportant) return '-';
-        return node.role === 'user' ? '+' : '-';
-      }
-
       var allTurns = [];
 
       function walk(node, branchLabel, branchSnippet) {
@@ -1206,25 +1201,15 @@ function initPanel(adapter) {
         var branchSnippet = entry.branchSnippet;
 
         var roleLabel = node.role === 'user' ? 'User' : 'Assistant';
-        var starPrefix = ann.star ? '★ ' : '';
         var snippet = firstSentence(node.text);
-        var collapse = collapseChar(node, ann);
+        var titleText = ann.unimportant
+          ? '~~' + roleLabel + ' — ' + snippet + '~~'
+          : roleLabel + ' — ' + snippet;
 
-        lines.push('> [!note]' + collapse + ' ' + starPrefix + roleLabel + ' — ' + snippet);
-
-        var hasMeta = branchLabel || ann.color || ann.notes;
+        lines.push('> [!note]- ' + titleText);
 
         if (branchLabel) {
           lines.push('> **Branch ' + branchLabel + '** — from: "' + branchSnippet + '"');
-        }
-        if (ann.color) {
-          lines.push('> Color: ' + colorLabel(ann.color) + ' — ' + ann.color);
-        }
-        if (ann.notes) {
-          lines.push('> **📝 Notes:** ' + ann.notes);
-        }
-
-        if (hasMeta) {
           lines.push('>');
         }
 
@@ -1234,6 +1219,11 @@ function initPanel(adapter) {
         }
 
         lines.push('');
+
+        if (ann.star) lines.push('★');
+        if (ann.color) lines.push('Color: ' + colorLabel(ann.color) + ' — ' + ann.color);
+        if (ann.notes) lines.push('**📝 Notes:** ' + ann.notes);
+        if (ann.star || ann.color || ann.notes) lines.push('');
       });
 
       var stickyNotes = cttvCanvasNotes.filter(function(n) {
