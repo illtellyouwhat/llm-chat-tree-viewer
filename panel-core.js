@@ -1206,7 +1206,8 @@ function initPanel(adapter) {
           ? '~~' + roleLabel + ' — ' + snippet + '~~'
           : roleLabel + ' — ' + snippet;
 
-        lines.push('> [!note]- ' + titleText);
+        var turnType = node.role === 'user' ? 'question' : 'success';
+        lines.push('> [!' + turnType + ']- ' + titleText);
 
         if (branchLabel) {
           lines.push('> **Branch ' + branchLabel + '** — from: "' + branchSnippet + '"');
@@ -1238,7 +1239,7 @@ function initPanel(adapter) {
         lines.push('# Sticky Notes');
         lines.push('');
         stickyNotes.forEach(function(note) {
-          lines.push('> [!warning]');
+          lines.push('> [!example]');
           var noteLines = note.text.split('\n');
           for (var i = 0; i < noteLines.length; i++) {
             lines.push(noteLines[i] ? '> ' + noteLines[i] : '>');
