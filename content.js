@@ -65,7 +65,11 @@
       <div class="cttv-settings-section">
         <div class="cttv-settings-label">Export</div>
         <button id="cttv-export-md-btn">📄 Export as Markdown...</button>
-        <div class="cttv-settings-hint">Annotated turns only. Downloads a .md file.</div>
+        <div class="cttv-settings-hint">Downloads a .md file. Check below to include only annotated turns (starred, colored, or noted).</div>
+        <div class="cttv-settings-row">
+          <label for="cttv-md-notes-only">Annotated turns only</label>
+          <input type="checkbox" id="cttv-md-notes-only">
+        </div>
         <button id="cttv-export-canvas-btn">🗺 Export as Obsidian Canvas...</button>
         <div class="cttv-settings-hint">Full conversation tree. Downloads a .canvas file.</div>
       </div>
@@ -305,14 +309,24 @@
     return null;
   }
 
-  function scrollToTurn(node) {
-    const domId = cttvEidToSectionId[`${node.eid}:${node.role}`] || node.id;
-    const section = document.querySelector(`section[data-turn-id="${domId}"]`);
-    const container = getScrollContainer();
-    if (section && container) {
-      const containerTop = container.getBoundingClientRect().top;
-      const sectionTop = section.getBoundingClientRect().top;
-      container.scrollTo({ top: container.scrollTop + (sectionTop - containerTop) - 60, behavior: 'smooth' });
+  async function scrollToTurn(node) {
+    const MAX_ATTEMPTS = 5;
+    const WAIT_MS = 350;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      const domId = cttvEidToSectionId[`${node.eid}:${node.role}`] || node.id;
+      const section = document.querySelector(`section[data-turn-id="${domId}"]`);
+      const container = getScrollContainer();
+      if (!section || !container) return;
+      const cRect = container.getBoundingClientRect();
+      const sRect = section.getBoundingClientRect();
+      if (sRect.top >= cRect.top && sRect.top < cRect.bottom - 100) return;
+      const prevScrollTop = container.scrollTop;
+      container.scrollTo({
+        top: container.scrollTop + (sRect.top - cRect.top) - 60,
+        behavior: attempt === 0 ? 'smooth' : 'auto',
+      });
+      await new Promise(r => setTimeout(r, WAIT_MS));
+      if (Math.abs(container.scrollTop - prevScrollTop) < 2) return;
     }
   }
 
@@ -393,7 +407,7 @@
     cttvEidToSectionId = buildEidMap(getMapping());
     document.getElementById('cttv-map').classList.remove('cttv-loading');
     selectNode(nodeId);
-    scrollToTurn(targetNode);
+    await scrollToTurn(targetNode);
   }
 
   function showError(msg) {

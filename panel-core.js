@@ -1233,10 +1233,17 @@ function initPanel(adapter) {
 
       walk(cttvTree, null, null);
 
+      const notesOnly = document.getElementById('cttv-md-notes-only').checked;
+      if (notesOnly) {
+        allTurns = allTurns.filter(function(e) {
+          return (e.ann.notes && e.ann.notes.trim()) || e.ann.star || e.ann.color;
+        });
+      }
+
       var s = document.getElementById('cttv-settings-status');
 
       if (allTurns.length === 0) {
-        s.textContent = 'No conversation loaded.';
+        s.textContent = notesOnly ? 'No annotated turns found.' : 'No conversation loaded.';
         s.dataset.error = '';
         return;
       }
