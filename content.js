@@ -64,14 +64,16 @@
       </div>
       <div class="cttv-settings-section">
         <div class="cttv-settings-label">Export</div>
-        <button id="cttv-export-md-btn">📄 Export as Markdown...</button>
-        <div class="cttv-settings-hint">Downloads a .md file. Check below to include only annotated turns (starred, colored, or noted).</div>
-        <div class="cttv-settings-row">
-          <label for="cttv-md-notes-only">Annotated turns only</label>
-          <input type="checkbox" id="cttv-md-notes-only">
+        <div class="cttv-export-btn-row">
+          <button id="cttv-export-md-btn">📄 Export as Markdown...</button>
+          <label class="cttv-inline-check"><input type="checkbox" id="cttv-md-notes-only"> Annotated only</label>
         </div>
-        <button id="cttv-export-canvas-btn">🗺 Export as Obsidian Canvas...</button>
-        <div class="cttv-settings-hint">Full conversation tree. Downloads a .canvas file.</div>
+        <div class="cttv-settings-hint">Downloads a .md file. Annotated = starred, colored, or noted.</div>
+        <div class="cttv-export-btn-row">
+          <button id="cttv-export-canvas-btn">🗺 Export as Obsidian Canvas...</button>
+          <label class="cttv-inline-check"><input type="checkbox" id="cttv-canvas-notes-only"> Annotated only</label>
+        </div>
+        <div class="cttv-settings-hint">Downloads a .canvas file. Annotated = starred, colored, or noted.</div>
       </div>
       <div id="cttv-settings-status"></div>
     </div>
@@ -419,8 +421,11 @@
     document.getElementById('cttv-map').classList.add('cttv-loading');
     try {
       const sessionRes = await fetch('/api/auth/session', { credentials: 'include' });
-      const session = await sessionRes.json();
-      const token = session.accessToken;
+      let token = null;
+      if (sessionRes.ok && (sessionRes.headers.get('content-type') || '').includes('json')) {
+        const session = await sessionRes.json();
+        token = session.accessToken;
+      }
       const res = await fetch(`/backend-api/conversation/${id}`, {
         credentials: 'include',
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
@@ -435,6 +440,10 @@
       }
       if (!res.ok) {
         showError(`Failed to load conversation (HTTP ${res.status}).`);
+        return;
+      }
+      if (!(res.headers.get('content-type') || '').includes('json')) {
+        showError('ChatGPT returned a non-JSON response. Try reloading the page or logging in again.');
         return;
       }
       const data = await res.json();

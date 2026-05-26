@@ -121,6 +121,23 @@
   margin-top: -4px;
 }
 
+.cttv-export-btn-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cttv-export-btn-row button {
+  flex: 1;
+}
+.cttv-inline-check {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #aaa;
+  white-space: nowrap;
+  cursor: pointer;
+}
 .cttv-settings-row {
   display: flex;
   align-items: center;

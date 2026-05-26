@@ -1389,10 +1389,19 @@ function initPanel(adapter) {
     layoutTree(treeCopy);
     const allNodes = flattenTree(treeCopy);
 
+    const canvasNotesOnly = document.getElementById('cttv-canvas-notes-only').checked;
+    const annotatedIds = canvasNotesOnly
+      ? new Set(allNodes.filter(function(n) {
+          const ann = cttvAnnotations[n.id] || {};
+          return n.role === 'root' || ann.star || ann.color || (ann.notes && ann.notes.trim());
+        }).map(function(n) { return n.id; }))
+      : null;
+
     const canvasNodes = [];
     const canvasEdges = [];
 
     for (const n of allNodes) {
+      if (annotatedIds && !annotatedIds.has(n.id)) continue;
       const ann = cttvAnnotations[n.id] || {};
       const x = n.col * STRIDE_X;
       const y = n.depth * STRIDE_Y;
@@ -1439,6 +1448,7 @@ function initPanel(adapter) {
       }
 
       for (const child of (n.children || [])) {
+        if (annotatedIds && !annotatedIds.has(child.id)) continue;
         canvasEdges.push({
           id: `edge-${n.id}-${child.id}`,
           fromNode: n.id,
