@@ -51,16 +51,23 @@ chrome.action.onClicked.addListener((tab) => {
     return;
   }
 
-  chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    files: ["bridge.js"],
-    world: "MAIN"
-  }).then(() => {
+  if (tab.url?.includes('claude.ai')) {
     chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      files: ["panel-core.js", "content.js"]
+      files: ['panel-core.js', 'claude-content.js']
     }).catch(() => {});
-  }).catch(() => {});
+  } else {
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ["bridge.js"],
+      world: "MAIN"
+    }).then(() => {
+      chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ["panel-core.js", "content.js"]
+      }).catch(() => {});
+    }).catch(() => {});
+  }
   chrome.scripting.insertCSS({
     target: { tabId: tab.id },
     files: ["panel.css"]
