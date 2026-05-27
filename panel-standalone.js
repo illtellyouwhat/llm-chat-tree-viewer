@@ -11,7 +11,9 @@ document.getElementById('cttv-close').addEventListener('click', () => {
   chrome.runtime.sendMessage({ type: 'popoutClosing' });
 });
 
-const { loadConversationData, applyPrefs, createNoteFromDrag } = initPanel({
+const standaloneAdapter = {
+  conversationUrl: '',
+
   onNodeClick(nodeId) {
     chrome.tabs.query({ url: 'https://chatgpt.com/*' }, (tabs) => {
       if (tabs[0]) chrome.tabs.sendMessage(tabs[0].id, { type: 'navigateTo', nodeId });
@@ -39,6 +41,7 @@ const { loadConversationData, applyPrefs, createNoteFromDrag } = initPanel({
         document.getElementById('cttv-error').style.display = 'block';
         return;
       }
+      standaloneAdapter.conversationUrl = handoff.conversationUrl || '';
       setConversationId(handoff.conversationId);
       loadAnnotations(() => {
         loadCanvasNotes(() => {
@@ -51,10 +54,12 @@ const { loadConversationData, applyPrefs, createNoteFromDrag } = initPanel({
       });
     });
   },
-});
+};
+const { loadConversationData, applyPrefs, createNoteFromDrag } = initPanel(standaloneAdapter);
 
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === 'conversationReloaded') {
+    if (msg.conversationUrl) standaloneAdapter.conversationUrl = msg.conversationUrl;
     loadConversationData(msg.data, msg.selectedId);
   } else if (msg.type === 'prefsUpdated') {
     applyPrefs(msg.prefs);

@@ -157,7 +157,7 @@
 
   document.getElementById('cttv-detach').addEventListener('click', () => {
     const handoff = cttvConversationData
-      ? { conversationId, data: cttvConversationData, selectedId: getSelectedId() }
+      ? { conversationId, data: cttvConversationData, selectedId: getSelectedId(), conversationUrl: cttvAdapter.conversationUrl }
       : {};
     chrome.storage.local.set({ 'cttv-handoff': handoff }, () => {
       if (chrome.runtime.lastError) {
@@ -171,7 +171,9 @@
     });
   });
 
-  const { selectNode, loadConversationData, loadAnnotations, applyPrefs, setConversationId, getMapping, getNodes, getTree, getSelectedId, refreshAllNodes, loadCanvasNotes, renderCanvasNotes, loadColorKey, renderColorKey, createNoteFromDrag } = initPanel({
+  const cttvAdapter = {
+    conversationUrl: location.href,
+
     onNodeClick(nodeId) {
       navigateToNode(nodeId);
     },
@@ -200,7 +202,8 @@
         });
       });
     },
-  });
+  };
+  const { selectNode, loadConversationData, loadAnnotations, applyPrefs, setConversationId, getMapping, getNodes, getTree, getSelectedId, refreshAllNodes, loadCanvasNotes, renderCanvasNotes, loadColorKey, renderColorKey, createNoteFromDrag } = initPanel(cttvAdapter);
 
   if (!conversationId) {
     showError('Please open a ChatGPT conversation to use Chat Tree Viewer.');
@@ -459,7 +462,7 @@
       if (activeTreeNode) selectNode(activeTreeNode.id, true);
       // Keep popout in sync — the injected panel and popout must always show identical state.
       // content.js is the source of truth for conversation data and pushes every reload to both.
-      try { chrome.runtime.sendMessage({ type: 'conversationReloaded', data, selectedId: activeTreeNode?.id || null }).catch(() => {}); } catch (_) {}
+      try { chrome.runtime.sendMessage({ type: 'conversationReloaded', data, selectedId: activeTreeNode?.id || null, conversationUrl: cttvAdapter.conversationUrl }).catch(() => {}); } catch (_) {}
     } catch (e) {
       document.getElementById('cttv-map').classList.remove('cttv-loading');
       showError('Error fetching conversation: ' + e.message);
@@ -505,6 +508,7 @@
     try {
       chrome.runtime.sendMessage({ type: 'isPopoutOpen' }, ({ open: popoutOpen } = {}) => {
         conversationId = newId;
+        cttvAdapter.conversationUrl = url.href;
         setConversationId(newId);
         if (!panelWasOpen && !popoutOpen) return;
         // Map was open — reload for new conversation.

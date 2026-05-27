@@ -1248,9 +1248,8 @@ function initPanel(adapter) {
         return;
       }
 
-      var convUrl = conversationId
-        ? 'https://chatgpt.com/c/' + conversationId
-        : '(unknown)';
+      var convUrl = adapter.conversationUrl
+        || (conversationId ? 'https://chatgpt.com/c/' + conversationId : '(unknown)');
       var dateStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
 
       var lines = [

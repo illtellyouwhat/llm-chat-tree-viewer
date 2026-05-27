@@ -150,7 +150,7 @@
 
   document.getElementById('cttv-detach').addEventListener('click', () => {
     const handoff = cttvConversationData
-      ? { conversationId, data: cttvConversationData, selectedId: getSelectedId() }
+      ? { conversationId, data: cttvConversationData, selectedId: getSelectedId(), conversationUrl: claudeAdapter.conversationUrl }
       : {};
     chrome.storage.local.set({ 'cttv-handoff': handoff }, () => {
       if (chrome.runtime.lastError) {
@@ -164,10 +164,9 @@
     });
   });
 
-  const {
-    selectNode, loadConversationData, loadAnnotations, applyPrefs, setConversationId,
-    getSelectedId, refreshAllNodes, loadCanvasNotes, renderCanvasNotes, loadColorKey, renderColorKey,
-  } = initPanel({
+  const claudeAdapter = {
+    conversationUrl: location.href,
+
     onNodeClick(nodeId) {
       scrollToTurn(nodeId);
     },
@@ -194,7 +193,11 @@
         });
       });
     },
-  });
+  };
+  const {
+    selectNode, loadConversationData, loadAnnotations, applyPrefs, setConversationId,
+    getSelectedId, refreshAllNodes, loadCanvasNotes, renderCanvasNotes, loadColorKey, renderColorKey,
+  } = initPanel(claudeAdapter);
 
   if (!conversationId) {
     showError('Please open a Claude.ai conversation to use Chat Tree Viewer.');
@@ -294,6 +297,7 @@
         type: 'conversationReloaded',
         data: cttvConversationData,
         selectedId: data.current_leaf_message_uuid || null,
+        conversationUrl: claudeAdapter.conversationUrl,
       }).catch(() => {});
     } catch (_) {}
     // Re-attach streaming observer so the next response triggers a reload
@@ -322,6 +326,7 @@
     try {
       chrome.runtime.sendMessage({ type: 'isPopoutOpen' }, ({ open: popoutOpen } = {}) => {
         conversationId = m[1];
+        claudeAdapter.conversationUrl = url.href;
         setConversationId(conversationId);
         panel.dataset.conversationId = conversationId;
         cttvConversationData = null;
