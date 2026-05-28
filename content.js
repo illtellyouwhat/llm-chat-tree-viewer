@@ -555,8 +555,6 @@
   });
 
   document.addEventListener('dragstart', (e) => {
-    if (e.target?.closest?.('#cttv-panel')) return;
-
     const anchor = e.target?.closest?.('a');
     if (anchor?.href) {
       const linkText = anchor.textContent?.trim() || anchor.href;

@@ -146,6 +146,7 @@
   let conversationId = location.pathname.match(/\/chat\/([a-f0-9-]+)/)?.[1] || null;
   panel.dataset.conversationId = conversationId || '';
   let cttvConversationData = null;
+  let currentLeafId = null;
   let streamingObserver = null;
 
   document.getElementById('cttv-detach').addEventListener('click', () => {
@@ -232,10 +233,34 @@
   }
 
   function scrollToTurn(nodeId) {
-    const el = document.querySelector(`[data-message-uuid="${nodeId}"]`);
-    if (!el) return;
     const container = document.querySelector('[data-autoscroll-container="true"]');
     if (!container) return;
+
+    // Assistant turns: data-message-uuid matches the API UUID directly
+    let el = document.querySelector(`[data-message-uuid="${nodeId}"]`);
+
+    // User turns: data-message-uuid is absent. Match by sequential position in the active branch.
+    if (!el && cttvConversationData?.mapping && currentLeafId) {
+      const node = cttvConversationData.mapping[nodeId];
+      if (node?.message?.author?.role === 'user') {
+        const path = [];
+        let id = currentLeafId;
+        while (id && cttvConversationData.mapping[id]) {
+          path.unshift(id);
+          id = cttvConversationData.mapping[id].parent;
+        }
+        const userIds = path.filter(
+          id => cttvConversationData.mapping[id]?.message?.author?.role === 'user'
+        );
+        const userIndex = userIds.indexOf(nodeId);
+        if (userIndex >= 0) {
+          const userEls = container.querySelectorAll('[data-testid="user-message"]');
+          el = userEls[userIndex] || null;
+        }
+      }
+    }
+
+    if (!el) return;
     const cRect = container.getBoundingClientRect();
     const eRect = el.getBoundingClientRect();
     container.scrollTo({ top: container.scrollTop + (eRect.top - cRect.top) - 60, behavior: 'smooth' });
@@ -291,6 +316,7 @@
     }
     const mapping = buildMapping(data.chat_messages);
     cttvConversationData = { mapping };
+    currentLeafId = data.current_leaf_message_uuid || null;
     loadConversationData(cttvConversationData, data.current_leaf_message_uuid || null);
     try {
       chrome.runtime.sendMessage({
@@ -362,6 +388,36 @@
     } else if (msg.type === 'prefsUpdated') {
       applyPrefs(msg.prefs);
     }
+  });
+
+  let lastDragSelection = '';
+  document.addEventListener('selectionchange', () => {
+    const sel = window.getSelection()?.toString()?.trim();
+    if (sel) lastDragSelection = sel;
+  });
+
+  document.addEventListener('dragstart', (e) => {
+    const anchor = e.target?.closest?.('a');
+    if (anchor?.href) {
+      const linkText = anchor.textContent?.trim() || anchor.href;
+      const md = `[${linkText}](${anchor.href})`;
+      e.dataTransfer?.setData('text/plain', md);
+      e.dataTransfer?.setData('application/cttv-link', md);
+      return;
+    }
+
+    const selection = window.getSelection();
+    let mdText = '';
+    if (selection && selection.rangeCount > 0) {
+      const frag = document.createElement('div');
+      frag.appendChild(selection.getRangeAt(0).cloneContents());
+      mdText = htmlToMarkdown(frag.innerHTML).trim();
+    }
+    const text = mdText || selection?.toString()?.trim() || lastDragSelection;
+    lastDragSelection = '';
+    if (!text) return;
+    e.dataTransfer?.setData('application/cttv-text', text);
+    e.dataTransfer?.setData('text/plain', text);
   });
 
 })();
